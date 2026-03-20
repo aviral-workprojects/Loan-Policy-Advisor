@@ -26,9 +26,11 @@ from services.router import Router, RetrievalPlan
 from services.fusion import ContextFusion
 from services.search import FallbackSearch
 from services.cache import SemanticCache
+from config import MOE_SIMPLE_QUERY_WORDS
 from services.reasoning import (
     build_reasoning_context,
     compute_confidence,
+    compute_final_score,
     validate_consistency,
     ReasoningContext,
 )
@@ -47,8 +49,12 @@ class AdvisorResponse:
     rule_results:         list[dict]
     confidence:           float
     sources_cited:        list[str]
-    reasoning_context:    dict         # full structured reasoning for debugging/UI
-    validation_issues:    list[dict]   # consistency check results
+    reasoning_context:    dict       # full reasoning: best_bank, critical_failures, failure_summary…
+    validation_issues:    list[dict]
+    best_bank:            str | None = None
+    best_bank_reason:     str | None = None
+    almost_eligible_bank: str | None = None
+    critical_failures:    list[dict] | None = None
     latency_ms:           float = 0.0
     from_cache:           bool  = False
 
@@ -120,17 +126,32 @@ class LoanAdvisorPipeline:
         # ── 2. Route ──────────────────────────────────────────────────────────
         plan = self.router.route(parsed)
 
-        # ── 3. Retrieve ───────────────────────────────────────────────────────
-        chunks = self.retrieval.retrieve(
-            query=user_query,
-            banks=plan.banks if not plan.use_hybrid else None,
-            doc_types=plan.doc_types if not plan.use_hybrid else None,
-            top_k=8,
+        # ── 3. MoE Routing: skip RAG for simple eligibility queries ──────────────
+        word_count = len(user_query.split())
+        skip_rag   = (
+            word_count <= MOE_SIMPLE_QUERY_WORDS
+            and parsed.intent == "eligibility"
+            and bool(parsed.profile)       # have enough profile data
         )
-        web_context = ""
-        if len(chunks) < MIN_DOCS_THRESHOLD:
-            results = self.search.search(user_query)
-            web_context = self.search.format_results(results)
+
+        # ── 3b. Retrieve (skipped for simple queries) ─────────────────────────
+        chunks: list = []
+        web_context  = ""
+        if not skip_rag:
+            chunks = self.retrieval.retrieve(
+                query=user_query,
+                banks=plan.banks if not plan.use_hybrid else None,
+                doc_types=plan.doc_types if not plan.use_hybrid else None,
+                top_k=8,
+            )
+            if len(chunks) < MIN_DOCS_THRESHOLD:
+                results = self.search.search(user_query)
+                web_context = self.search.format_results(results)
+        else:
+            print(f"[Pipeline] MoE: simple query ({word_count}w) — skipping RAG")
+
+        # Extract real similarity scores for calibrated confidence
+        retrieval_scores = [c.similarity_score for c in chunks if hasattr(c, "similarity_score")]
 
         # ── 4. Rule Engine — strict per-bank evaluation ───────────────────────
         bank_results: list[BankResult] = []
@@ -155,8 +176,9 @@ class LoanAdvisorPipeline:
         print(f"[Pipeline] Decision: {decision} | eligible={reasoning.eligible_banks}")
 
         # ── 7. Calibrated confidence ──────────────────────────────────────────
-        confidence = compute_confidence(bank_results, reasoning, len(chunks))
-        print(f"[Pipeline] Confidence: {confidence}")
+        confidence, conf_breakdown = compute_confidence(bank_results, reasoning, len(chunks), retrieval_scores)
+        reasoning.confidence_breakdown = conf_breakdown   # attach for surfacing in response
+        print(f"[Pipeline] Confidence: {confidence} | breakdown={conf_breakdown}")
 
         # ── 8. Consistency validation ─────────────────────────────────────────
         issues = validate_consistency(bank_results, decision, reasoning)
@@ -169,11 +191,12 @@ class LoanAdvisorPipeline:
         banks_compared = sorted(
             [
                 {
-                    "name":     br.bank,
-                    "eligible": br.eligible,
-                    "rate":     BANK_RATES.get(br.bank.lower(), "N/A"),
-                    "score":    round(br.rule_score * 100),
-                    "summary":  br.summary,
+                    "name":          br.bank,
+                    "eligible":      br.eligible,
+                    "rate":          BANK_RATES.get(br.bank.lower(), "N/A"),
+                    "score":         int(compute_final_score(br) * 100),  # penalised score
+                    "rule_score":    round(br.rule_score * 100),          # raw pass rate
+                    "summary":       br.summary,
                 }
                 for br in bank_results
             ],
@@ -223,6 +246,10 @@ class LoanAdvisorPipeline:
                 {"severity": i.severity, "bank": i.bank, "message": i.message}
                 for i in issues
             ],
+            best_bank=reasoning.best_bank,
+            best_bank_reason=reasoning.best_bank_reason,
+            almost_eligible_bank=reasoning.closest_bank,
+            critical_failures=reasoning.critical_failures or [],
             latency_ms=round(latency, 1),
             from_cache=False,
         )

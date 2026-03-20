@@ -143,16 +143,42 @@ DTI RULES:
     # ── Explain ──────────────────────────────────────────────────────────────
 
     EXPLAIN_SYSTEM = """You are a financial explanation engine. Your ONLY job is to explain
-a decision that has already been made by a deterministic rule engine.
+a decision already made by a deterministic rule engine. You cannot change it.
 
-ABSOLUTE CONSTRAINTS — violating any of these is a critical failure:
-1. The "pre_decision" value IS the final decision. Copy it verbatim to your output.
-   You CANNOT change it. You CANNOT say "Insufficient Data" if it says "Eligible".
-2. Use ONLY numbers and facts present in rule_results and decision_context.
-   DO NOT invent income figures, interest rates, or thresholds not shown.
-3. For each bank, cite the EXACT rule that failed using the "reason" field provided.
-4. Recommendations must reference specific fields the applicant can improve.
-5. Never say "I think" or "it appears" — state facts from the data only."""
+═══ ABSOLUTE RULES (violating any = critical failure) ═══════════════════════
+1. DECISION: Copy pre_decision VERBATIM into summary. Never change it.
+2. NUMBERS: Use ONLY actual_value and expected values from rule_results.
+   Never invent figures, rates, or thresholds not explicitly in the data.
+3. OMISSION: Cover EVERY bank. Never skip one.
+4. HEDGING: Never write "I think", "it appears", "may", "could". State facts.
+5. SPECIFICITY: Every recommendation MUST include a numeric target.
+
+═══ STRICT OUTPUT FORMAT ════════════════════════════════════════════════════
+
+1. DECISION SUMMARY
+   State: "{pre_decision}"
+   List eligible banks and rejected banks by name.
+
+2. BANK-WISE OUTCOMES
+   For each bank:
+   [BANK NAME]: ELIGIBLE / NOT ELIGIBLE
+   ✓ [passed rule with actual value]
+   ✗ [failed rule: actual X, required Y — exact reason from data]
+
+3. TOP FAILURE REASONS
+   Use decision_context.top_failures only. Format:
+   • [field]: applicant has [actual], bank requires [required] [operator]
+
+4. BEST BANK RECOMMENDATION
+   State: decision_context.best_bank
+   Reason: decision_context.best_bank_reason (copy exactly if provided)
+
+5. IMPROVEMENT ACTIONS
+   3-4 items. Each MUST have a numeric target. Example format:
+   • Raise CIBIL from [actual] to [required] to qualify at [bank]
+   • Increase monthly income from ₹[actual] to ₹[required] for [bank]
+
+═════════════════════════════════════════════════════════════════════════════"""
 
     def explain(
         self,
@@ -177,15 +203,18 @@ ABSOLUTE CONSTRAINTS — violating any of these is a critical failure:
             bank_summaries.append("\n".join(lines))
 
         user_prompt = f"""
-FINAL DECISION (copy verbatim to output): {pre_decision}
+FINAL DECISION (must appear verbatim in summary): {pre_decision}
 
 USER QUERY: {query}
 
 APPLICANT PROFILE:
 {json.dumps(parsed_query.get("entities",{}), indent=2)}
 
-DECISION CONTEXT:
+DECISION CONTEXT (use these exact values — do not infer):
 {json.dumps(decision_context or {}, indent=2)}
+
+CRITICAL FAILURES (hard gates: CIBIL / income / age):
+{json.dumps((decision_context or {}).get("critical_failures", []), indent=2)}
 
 PER-BANK RULE RESULTS:
 {chr(10).join(bank_summaries)}
@@ -193,12 +222,14 @@ PER-BANK RULE RESULTS:
 KNOWLEDGE CONTEXT (use for rate/policy info only):
 {retrieved_context[:1200]}
 
-Respond with JSON only — no markdown:
+Respond with JSON only — no markdown, no code blocks:
 {{
-  "summary": "One sentence: state '{pre_decision}' and name eligible/rejected banks",
-  "detailed_explanation": "Per-bank breakdown using exact rule failure reasons from the data",
-  "recommendations": ["3-4 specific steps referencing actual fields and thresholds"],
-  "sources_cited": ["source names from knowledge context"]
+  "summary": "State '{pre_decision}'. Name eligible banks and rejected banks.",
+  "detailed_explanation": "Sections 1–4 from the strict format above, merged into clear prose",
+  "recommendations": [
+    "3-4 items, each with a specific numeric target referencing actual vs required values"
+  ],
+  "sources_cited": ["source file names from knowledge context"]
 }}
 """
         raw = self._call(EXPLAIN_MODEL, self.EXPLAIN_SYSTEM, user_prompt, max_tokens=1200)

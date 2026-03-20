@@ -27,6 +27,9 @@ class ReasoningContext:
     data_completeness: float          # 0–1: how complete the profile was
     profile_fields_provided: list[str]
     profile_fields_missing:  list[str]
+    critical_failures:   list[dict] | None = None  # failures on CIBIL/income/age only
+    best_bank_reason:    str | None = None
+    confidence_breakdown: dict | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -40,11 +43,76 @@ class ReasoningContext:
             "data_completeness":       round(self.data_completeness, 2),
             "profile_fields_provided": self.profile_fields_provided,
             "profile_fields_missing":  self.profile_fields_missing,
+            "critical_failures":        self.critical_failures,
+            "best_bank_reason":         self.best_bank_reason,
+            "confidence_breakdown":     self.confidence_breakdown,
         }
+
+# ---------------------------------------------------------------------------
+# Bank scoring — penalised rule score
+# ---------------------------------------------------------------------------
+
+def compute_final_score(br) -> float:
+    """
+    Penalised score for ranking banks.
+
+    base            = rule_score (pass_count / evaluated_count)
+    failure_penalty = 0.15 per failed rule
+    missing_penalty = 0.05 per missing optional field
+    cap             = 0.60 if not eligible (so rejected banks never outscore eligible ones)
+
+    Returns a float 0.05–1.00.
+    """
+    base            = br.rule_score
+    failure_penalty = len(br.failed)  * 0.15
+    missing_penalty = len(br.missing) * 0.05
+    score           = base - failure_penalty - missing_penalty
+
+    if not br.eligible:
+        score = min(score, 0.60)
+
+    return round(max(score, 0.05), 2)
+
+
+def explain_best_bank(best_bank: str | None, bank_results: list) -> str | None:
+    """
+    Plain-English sentence: why this bank is the best choice.
+    Uses ONLY measured data — no hallucination.
+    """
+    if not best_bank:
+        return None
+    br = next((b for b in bank_results if b.bank == best_bank), None)
+    if br is None:
+        return None
+    score_pct = round(compute_final_score(br) * 100)
+    n_passed  = len(br.passed)
+    n_failed  = len(br.failed)
+    if n_failed == 0:
+        return (
+            f"{best_bank} is the recommended bank — it passed all {n_passed} eligibility "
+            f"rules with a score of {score_pct}% and has the lowest entry requirements "
+            f"among eligible options."
+        )
+    else:
+        return (
+            f"{best_bank} has the highest eligibility score ({score_pct}%) among evaluated "
+            f"banks, passing {n_passed} rules with {n_failed} condition(s) to address."
+        )
+
 
 # ---------------------------------------------------------------------------
 # Builder
 # ---------------------------------------------------------------------------
+
+# Priority order: lower = more impactful (shown first, weighted heavier)
+_FAILURE_PRIORITY = {
+    "credit_score":          1,
+    "monthly_income":        2,
+    "dti_ratio":             3,
+    "work_experience_months":4,
+    "employment_type":       5,
+    "age":                   6,
+}
 
 # Maps rule field names to human categories for failure summary
 _FAILURE_CATEGORIES = {
@@ -115,20 +183,31 @@ def build_reasoning_context(
         if rejected_results else None
     )
 
-    # Top 3 most impactful failures (unique by field)
+    # Sort all failures by priority (most impactful first), then deduplicate by field
+    _CRITICAL_FIELDS_SET = {"credit_score", "monthly_income", "age"}
+    all_failures.sort(key=lambda f: _FAILURE_PRIORITY.get(f["field"], 99))
     seen_fields: set[str] = set()
     top_failures: list[dict] = []
-    for f in sorted(all_failures, key=lambda x: x["bank"]):
+    for f in all_failures:
         if f["field"] not in seen_fields:
             top_failures.append(f)
             seen_fields.add(f["field"])
-        if len(top_failures) >= 3:
+        if len(top_failures) >= 5:   # surface up to 5 distinct failure types
             break
+
+    # Critical failures = CIBIL / income / age only (lenders' hard gates)
+    critical_failures = [
+        f for f in all_failures
+        if f["field"] in _CRITICAL_FIELDS_SET
+    ]
 
     # Data completeness
     provided = [k for k in _KNOWN_PROFILE_FIELDS if profile.get(k) is not None]
     missing  = [k for k in _KNOWN_PROFILE_FIELDS if profile.get(k) is None]
     completeness = len(provided) / len(_KNOWN_PROFILE_FIELDS)
+
+    # Best bank explanation
+    best_bank_reason = explain_best_bank(best_bank, bank_results)
 
     return ReasoningContext(
         eligible_banks=eligible_banks,
@@ -141,6 +220,8 @@ def build_reasoning_context(
         data_completeness=completeness,
         profile_fields_provided=provided,
         profile_fields_missing=missing,
+        best_bank_reason=best_bank_reason,
+        critical_failures=critical_failures,
     )
 
 
@@ -152,23 +233,32 @@ def compute_confidence(
     bank_results: list[BankResult],
     reasoning:    ReasoningContext,
     retrieval_chunk_count: int = 5,
-) -> float:
+    retrieval_scores: list[float] | None = None,
+) -> tuple[float, dict]:
     """
     Calibrated confidence score:
         0.5 × avg_rule_score
       + 0.3 × data_completeness
       + 0.2 × retrieval_confidence
 
+    retrieval_confidence:
+      - If retrieval_scores is provided → avg(scores) from FAISS/reranker (0–1)
+      - Otherwise → falls back to chunk_count / 8 heuristic
+
     Caps:
       - Any critical rule (income/CIBIL/age) failed → cap ≤ 0.60
-      - Multiple banks failed                       → reduce by 0.05 per failed bank beyond 1
+      - Multiple banks failed                       → reduce by 0.04 per failed bank beyond 1
     """
     if not bank_results:
         return 0.3
 
     avg_rule_score = sum(r.rule_score for r in bank_results) / len(bank_results)
     data_comp      = reasoning.data_completeness
-    retrieval_conf = min(retrieval_chunk_count / 8.0, 1.0)  # 8 chunks = full confidence
+    # Use average similarity score if available, else chunk-count heuristic
+    if retrieval_scores and len(retrieval_scores) > 0:
+        retrieval_conf = round(min(float(sum(retrieval_scores)) / len(retrieval_scores), 1.0), 3)
+    else:
+        retrieval_conf = min(retrieval_chunk_count / 8.0, 1.0)
 
     raw = 0.5 * avg_rule_score + 0.3 * data_comp + 0.2 * retrieval_conf
 
@@ -186,7 +276,18 @@ def compute_confidence(
     if n_failed > 1:
         raw -= (n_failed - 1) * 0.04
 
-    return round(max(0.05, min(raw, 0.99)), 2)
+    final = round(max(0.05, min(raw, 0.99)), 2)
+    breakdown = {
+        "rule_score_component":     round(0.5 * avg_rule_score, 3),
+        "data_completeness_component": round(0.3 * data_comp, 3),
+        "retrieval_component":      round(0.2 * retrieval_conf, 3),
+        "avg_rule_score":           round(avg_rule_score, 3),
+        "data_completeness":        round(data_comp, 3),
+        "retrieval_confidence":     round(retrieval_conf, 3),
+        "critical_failure_cap":     critical_failed,
+        "final":                    final,
+    }
+    return final, breakdown
 
 
 # ---------------------------------------------------------------------------
@@ -254,5 +355,33 @@ def validate_consistency(
             severity="error", bank="",
             message=f"Decision is 'Not Eligible' but {n_eligible} bank(s) actually passed.",
         ))
+
+    # Confidence sanity: if breakdown exists and final < 0.5, warn
+    if reasoning.confidence_breakdown:
+        final_conf = reasoning.confidence_breakdown.get("final", 1.0)
+        if final_conf < 0.50:
+            issues.append(ValidationIssue(
+                severity="warning", bank="",
+                message=f"Low confidence ({final_conf:.0%}) — response may be unreliable. "
+                        f"Consider providing more profile data.",
+            ))
+
+    # Reasoning vs rule mismatch: best_bank should be in eligible_banks
+    if reasoning.best_bank and reasoning.best_bank not in reasoning.eligible_banks:
+        issues.append(ValidationIssue(
+            severity="error", bank=reasoning.best_bank,
+            message=f"best_bank '{reasoning.best_bank}' is not in eligible_banks "
+                    f"{reasoning.eligible_banks} — reasoning mismatch.",
+        ))
+
+    # Critical failure count mismatch: if critical_failures exist but decision = "Eligible"
+    if reasoning.critical_failures and decision == "Eligible":
+        # Only a problem if ALL banks are marked eligible yet critical failures exist
+        if len(reasoning.eligible_banks) == n_total:
+            issues.append(ValidationIssue(
+                severity="warning", bank="",
+                message=f"Critical failures detected ({len(reasoning.critical_failures)}) "
+                        f"but all banks are marked eligible — verify rule thresholds.",
+            ))
 
     return issues

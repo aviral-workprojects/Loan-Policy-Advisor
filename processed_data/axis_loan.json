@@ -1,0 +1,36 @@
+{
+  "file_hash": "db23074ab8e972959527ab629f4d69c5",
+  "source": "axis_loan.pdf",
+  "bank": "Axis",
+  "chunk_count": 2,
+  "chunks": [
+    {
+      "text": "TERMS AND CONDITIONS FOR BUSINESS LOAN PREQUALIFIED OFFE R The name of this promotional scheme is “Pre-Qualified Business Loan” by Small Business Banking - powered by Axis Bank (Pre-Qualified Business Loan hereinafter referred to as “Scheme”). This Scheme is valid for selective group of Axis Bank Current account holder in India only, and at the sole discretion of Axis Bank. This Scheme is available and validy only for citizens of India. The Customers of Axis Bank who are eligible for this Scheme are not bound in any way to participate in this Scheme. Any participation in the Scheme is voluntary and the Customer may opt out of the Scheme at any time during the Scheme Period. There is no compensation for non-participation in the Scheme under any circumstances whatsoever. A Customer can qualify only once for the Scheme during such Scheme Period. Axis Bank will have the sole discretion to determine who qualifies as an eligible Customer, as per the eligibility criteria prescribed by Axis Bank in this regard, and Axis Bank’s decision in this regard shall be final and binding on the participating Customers. For more information on the Prequalified Business Loan scheme visit the Axis Bank website: (https://www.axisbank.com/business-banking/avail-msme-and-corporate-finan cing/smallbusinessbanking/general-information) (“Website”). The Customers agree to be bound by the terms and conditions contained herein. Without a Customer being required to do any further act, the Customers shall be deemed to have read, understood and unconditionally accepted the terms and conditions herein. Nothing contained herein shall prejudice or affect the terms and conditions of the Customer loan agreements. These terms and conditions shall be in addition to and not in derogation to the terms of the loan agreement. Axis Bank reserves the right to amend/modify/cancel/withdraw this Scheme and/or the terms and conditions applicable at any time without prior notice. Any changes in these terms will be notified on the Website and the Customer is required to keep himself/ herself updated of the same. The Schemes cannot be exchanged for cash or any other form of reward. Further, this Scheme cannot be used in conjunction with any other discounts and promotions of Axis Bank. The Scheme is subject to all such laws, rules and regulations as may be applicable in any jurisdiction in India from time to time and where prohibited the same shall not be available. Any images shown on email or on the Website, or on any other advertisement",
+      "source": "axis_loan.pdf",
+      "bank": "Axis",
+      "doc_type": "pdf",
+      "chunk_id": 0,
+      "similarity_score": 0.0,
+      "page_number": 0,
+      "section_title": "",
+      "element_type": "text",
+      "field_hint": "",
+      "structured_data": {},
+      "content_hash": "10b2651f2112"
+    },
+    {
+      "text": "Further, this Scheme cannot be used in conjunction with any other discounts and promotions of Axis Bank. The Scheme is subject to all such laws, rules and regulations as may be applicable in any jurisdiction in India from time to time and where prohibited the same shall not be available. Any images shown on email or on the Website, or on any other advertisement material whatsoever, are for representational purpose only. This Scheme is not applicable to Axis Bank employees and/or their relatives. Axis Bank, its group entities/ affiliates or their respective directors, officers, employees, agents, vendors, etc., shall not be liable for any loss or damage whatsoever that may be suffered, or for any personal injury that may be suffered by a Customer, directly or indirectly, by use or non-use of products/ services under this Scheme. The Scheme is not transferable, non-assignable, non-negotiable and cannot be encashed under any circumstances. All rights, title and interest including but not limited to the intellectual property rights in the promotional material(s) shall vest solely and exclusively with Axis Bank at all times and Axis Bank shall be entitled to use the database of the entries received or any information in any media for future promotional, marketing and publicity purpose without any further reference or payment or compensation to the participating Customers. Any disputes arising out of this Scheme shall be subject to the exclusive jurisdiction of competent courts in Mumbai. The existence of a dispute, if any, shall not constitute a claim against Axis Bank.",
+      "source": "axis_loan.pdf",
+      "bank": "Axis",
+      "doc_type": "pdf",
+      "chunk_id": 1,
+      "similarity_score": 0.0,
+      "page_number": 0,
+      "section_title": "",
+      "element_type": "text",
+      "field_hint": "",
+      "structured_data": {},
+      "content_hash": "3302fef95b00"
+    }
+  ]
+}

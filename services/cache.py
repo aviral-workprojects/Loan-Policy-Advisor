@@ -16,6 +16,7 @@ import numpy as np
 from config import CACHE_SIMILARITY_THRESHOLD, CACHE_MAX_ENTRIES, CACHE_DIR
 
 CACHE_TTL_SECONDS = 60 * 60 * 6   # 6 hours — financial data changes; don't cache too long
+CACHE_VERSION = "v3.4"              # bump this when rules/pipeline logic changes to auto-invalidate
 
 
 class SemanticCache:
@@ -52,6 +53,8 @@ class SemanticCache:
         for key, entry in self._store.items():
             if self._is_expired(entry):
                 continue   # skip stale entries
+            if not key.startswith(CACHE_VERSION + ":"):
+                continue   # skip entries from older versions
             score = float(np.dot(q_emb, entry["embedding"]))
             if score > best_score:
                 best_score = score
@@ -64,7 +67,7 @@ class SemanticCache:
         return None
 
     def set(self, query: str, response: dict) -> None:
-        key = hashlib.md5(query.encode()).hexdigest()
+        key = CACHE_VERSION + ":" + hashlib.md5(query.encode()).hexdigest()
         emb = self._embed(query)
         self._store[key] = {
             "embedding": emb,

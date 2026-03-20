@@ -22,6 +22,7 @@ from config import (
     DATA_DIR, FAISS_INDEX_DIR, EMBEDDING_MODEL, EMBEDDING_DIM,
     CHUNK_SIZE, CHUNK_OVERLAP, TOP_K,
     USE_RERANKER, RERANKER_FETCH_K, RERANKER_TOP_N,
+    PROCESSED_DATA_DIR,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,8 +36,13 @@ class DocChunk:
     text: str
     source: str        # filename
     bank: str          # e.g. "Axis", "ICICI", "RBI", "Paisabazaar"
-    doc_type: str      # "eligibility" | "pdf" | "comparison" | "regulatory" | "blog"
+    doc_type: str      # "eligibility" | "pdf" | "table" | "rule" | "comparison" | "regulatory"
     chunk_id: int = 0
+    similarity_score: float = 0.0   # FAISS cosine similarity (populated at retrieval time)
+    field_hint:    str = ""          # e.g. "monthly_income", "credit_score" — from structured PDF
+    section_title: str = ""          # section heading from NVIDIA Page Elements
+    element_type:  str = "text"      # "text" | "table" | "title" | "rule" | "paragraph"
+    page_number:   int = 0           # source page in original PDF
 
 # ---------------------------------------------------------------------------
 # Source Mapping
@@ -69,14 +75,10 @@ class RetrievalService:
 
     def _get_embedder(self):
         if self._embedder is None:
-            try:
-                from sentence_transformers import SentenceTransformer
-                self._embedder = SentenceTransformer(EMBEDDING_MODEL)
-            except ImportError:
-                raise ImportError(
-                    "sentence-transformers not installed. "
-                    "Run: pip install sentence-transformers"
-                )
+            # Factory: uses NVIDIA NemoRetriever API or local sentence-transformers
+            # depending on NVIDIA_EMBED_BACKEND setting in .env
+            from services.nvidia_embedder import get_embedder
+            self._embedder = get_embedder()
         return self._embedder
 
     def _get_faiss(self):
@@ -107,10 +109,47 @@ class RetrievalService:
     # ------------------------------------------------------------------ load
 
     def load_documents(self) -> int:
-        """Scan data/ directory and load all .txt and .pdf files."""
+        """
+        Load documents from two sources:
+        1. processed_data/*.json  — structured chunks from pdf_pipeline.py (preferred)
+        2. data/**/*.txt and *.pdf — plain text files (fallback / non-PDF sources)
+
+        Processed JSON files take priority over raw PDF files of the same stem.
+        """
         self._chunks = []
         chunk_id = 0
 
+        # Track which sources were covered by processed JSON
+        processed_stems: set[str] = set()
+
+        # ── Source 1: Structured chunks from pdf_pipeline output ─────────
+        if PROCESSED_DATA_DIR.exists():
+            for json_path in sorted(PROCESSED_DATA_DIR.glob("*.json")):
+                try:
+                    data = json.loads(json_path.read_text(encoding="utf-8"))
+                    raw_chunks = data.get("chunks", [])
+                    if not raw_chunks:
+                        continue
+                    for rc in raw_chunks:
+                        self._chunks.append(DocChunk(
+                            text=rc.get("text", ""),
+                            source=rc.get("source", json_path.stem),
+                            bank=rc.get("bank", "Unknown"),
+                            doc_type=rc.get("doc_type", "pdf"),
+                            chunk_id=chunk_id,
+                            field_hint=rc.get("field_hint", ""),
+                            section_title=rc.get("section_title", ""),
+                            element_type=rc.get("element_type", "text"),
+                            page_number=rc.get("page_number", 0),
+                        ))
+                        chunk_id += 1
+                    processed_stems.add(json_path.stem)
+                    logger.info("[Retrieval] Loaded structured JSON: %s (%d chunks)",
+                                json_path.name, len(raw_chunks))
+                except Exception as e:
+                    logger.warning("[Retrieval] Failed to load %s: %s", json_path.name, e)
+
+        # ── Source 2: Plain text / unprocessed files ──────────────────────
         for folder, (bank, doc_type) in _SOURCE_MAP.items():
             folder_path = DATA_DIR / folder
             if not folder_path.exists():
@@ -118,6 +157,11 @@ class RetrievalService:
 
             for file_path in sorted(folder_path.glob("*")):
                 if file_path.suffix not in (".txt", ".pdf"):
+                    continue
+
+                # Skip if a processed JSON already covers this PDF
+                if file_path.stem in processed_stems:
+                    logger.debug("[Retrieval] Skipping %s (covered by processed JSON)", file_path.name)
                     continue
 
                 text = self._read_file(file_path)
@@ -134,6 +178,7 @@ class RetrievalService:
                     ))
                     chunk_id += 1
 
+        logger.info("[Retrieval] Total chunks loaded: %d", len(self._chunks))
         return len(self._chunks)
 
     @staticmethod
@@ -252,7 +297,12 @@ class RetrievalService:
             if len(results) >= fetch_k:
                 break
 
-        return [c for _, c in results]
+        # Attach the similarity score to each chunk so pipeline can use it
+        scored: list[DocChunk] = []
+        for score, chunk in results:
+            chunk.similarity_score = float(score)
+            scored.append(chunk)
+        return scored
 
     def retrieve(
         self,

@@ -107,3 +107,36 @@ AGGREGATOR_URLS = {
     "Paisabazaar": "https://www.paisabazaar.com/personal-loan/",
     "BankBazaar":  "https://www.bankbazaar.com/personal-loan.html",
 }
+
+# --- NVIDIA NemoRetriever Embeddings ---
+# Set NVIDIA_EMBED_BACKEND="nvidia_api" to use NVIDIA API instead of sentence-transformers
+NVIDIA_EMBED_BACKEND = os.getenv("NVIDIA_EMBED_BACKEND", "local")   # "local" | "nvidia_api"
+NVIDIA_EMBED_MODEL   = os.getenv("NVIDIA_EMBED_MODEL",
+                                  "nvidia/llama-3_2-nemoretriever-300m-embed-v2")
+# Dimension for NemoRetriever 300M embed model
+NVIDIA_EMBED_DIM     = 1024
+
+# --- MoE Routing ---
+# Word count threshold below which we skip RAG (pure rule engine path)
+MOE_SIMPLE_QUERY_WORDS = int(os.getenv("MOE_SIMPLE_QUERY_WORDS", "6"))
+
+# --- PDF Pipeline (NVIDIA Page Elements) ---
+# Processed JSON output from pdf_pipeline.py is stored here
+PROCESSED_DATA_DIR = BASE_DIR / "processed_data"
+
+# NVIDIA Page Elements API endpoint
+# Model: nemoretriever-page-elements-v3
+# Docs: https://build.nvidia.com/nvidia/nemoretriever-page-elements-v3
+NVIDIA_PAGE_ELEMENTS_URL = "https://ai.api.nvidia.com/v1/cv/nvidia/nemoretriever-page-elements-v3"
+
+# Enable structured PDF processing via NVIDIA API
+# If False → falls back to plain text extraction (existing behaviour)
+USE_NVIDIA_PDF = os.getenv("USE_NVIDIA_PDF", "false").lower() == "true"
+
+# Max retries for NVIDIA API calls in the PDF pipeline
+PDF_API_MAX_RETRIES = int(os.getenv("PDF_API_MAX_RETRIES", "3"))
+PDF_API_RETRY_DELAY = float(os.getenv("PDF_API_RETRY_DELAY", "2.0"))  # seconds
+
+# Chunk size limits for structured content (words)
+PDF_SECTION_CHUNK_MAX  = int(os.getenv("PDF_SECTION_CHUNK_MAX", "400"))
+PDF_TABLE_CHUNK_MAX    = int(os.getenv("PDF_TABLE_CHUNK_MAX",   "300"))

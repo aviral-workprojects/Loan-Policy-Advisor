@@ -52,10 +52,14 @@ class QueryResponse(BaseModel):
     rule_results:         list[dict]
     confidence:           float
     sources_cited:        list[str]
-    reasoning_context:    dict
+    reasoning_context:    dict              # full reasoning: best_bank, failure_summary, breakdown…
     validation_issues:    list[ValidationIssue]
-    latency_ms:           float
-    from_cache:           bool
+    best_bank:            str | None = None
+    best_bank_reason:     str | None = None
+    almost_eligible_bank: str | None = None
+    critical_failures:    list[dict] = []
+    latency_ms:           float = 0.0
+    from_cache:           bool = False
 
 # ---------------------------------------------------------------------------
 # Endpoints
