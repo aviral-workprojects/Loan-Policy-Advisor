@@ -586,15 +586,25 @@ function renderResult(data) {
 
   const BANK_RATES = { Axis:'10.49%', HDFC:'10.50%', ICICI:'10.65%', SBI:'11.05%' };
 
-  // Build comparison objects from rule_results (always populated for multi-bank)
-  const compBanks = data.rule_results.map(r => ({
-    name:  r.bank,
-    elig:  r.eligible,
-    rate:  BANK_RATES[r.bank] || 'N/A',
-    score: r.eligible ? Math.round(70 + Math.random()*20) : Math.round(30 + Math.random()*25),
-    passed: r.passed || [],
-    failed: r.failed || [],
-  }));
+  // Build comparison objects — prefer backend banks_compared (has real rate/score),
+  // fall back to building from rule_results for robustness
+  const compBanks = (data.banks_compared && data.banks_compared.length > 0)
+    ? data.banks_compared.map(b => ({
+        name:     b.name,
+        eligible: b.eligible,
+        rate:     b.rate || BANK_RATES[b.name] || 'N/A',
+        score:    b.score || 50,
+        passed:   (data.rule_results.find(r=>r.bank===b.name)||{}).passed || [],
+        failed:   (data.rule_results.find(r=>r.bank===b.name)||{}).failed || [],
+      }))
+    : data.rule_results.map(r => ({
+        name:     r.bank,
+        eligible: r.eligible,
+        rate:     BANK_RATES[r.bank] || 'N/A',
+        score:    r.eligible ? 75 : 35,
+        passed:   r.passed || [],
+        failed:   r.failed || [],
+      }));
 
   // Show Compare tab whenever there are multiple banks
   const hasComp = compBanks.length > 1;
@@ -689,10 +699,10 @@ function renderResult(data) {
           <table class="bank-table" style="min-width:300px">
             <thead><tr><th>Bank</th><th>Eligibility</th><th>Rate</th><th>Score</th></tr></thead>
             <tbody>
-              ${[...compBanks].sort((a,b)=>(b.elig?1:0)-(a.elig?1:0)).map(b=>`
+              ${[...compBanks].sort((a,b)=>(b.eligible?1:0)-(a.eligible?1:0)).map(b=>`
                 <tr>
                   <td><span class="bank-name">${b.name}</span></td>
-                  <td><span class="badge-elig ${b.elig?'yes':'no'}">${b.elig?'Eligible':'Not Eligible'}</span></td>
+                  <td><span class="badge-elig ${b.eligible?'yes':'no'}">${b.eligible?'Eligible':'Not Eligible'}</span></td>
                   <td style="font-family:var(--mono);color:var(--text-1)">${b.rate}</td>
                   <td><div class="score-bar"><div class="score-track"><div class="score-fill" style="width:${b.score}%"></div></div><span style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${b.score}</span></div></td>
                 </tr>`).join('')}

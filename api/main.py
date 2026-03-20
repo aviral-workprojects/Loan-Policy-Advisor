@@ -54,16 +54,27 @@ app.add_middleware(
 # Models
 # ---------------------------------------------------------------------------
 
+from typing import Any
+
+# ---------------------------------------------------------------------------
+
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=5, max_length=1000,
                        example="Am I eligible for an Axis Bank loan with 40k salary, age 28, CIBIL 750?")
+
+class BankComparison(BaseModel):
+    name: str
+    eligible: bool
+    rate: str
+    score: float
+    summary: str = ""
 
 class QueryResponse(BaseModel):
     decision: str
     summary: str
     detailed_explanation: str
     recommendations: list[str]
-    banks_compared: list[str]
+    banks_compared: list[BankComparison]   # FIX: was list[str], now structured
     rule_results: list[dict]
     confidence: float
     sources_cited: list[str]
