@@ -1,42 +1,51 @@
 """
-pdf_pipeline.py
-================
-Production-grade PDF intelligence pipeline using NVIDIA Page Elements API.
+pdf_pipeline.py  (v3 — multimodal, page-level, resilient)
+===========================================================
+Production-grade PDF intelligence pipeline.
 
 Architecture:
     PDF file
-        → Base64 encode
-        → NVIDIA nemoretriever-page-elements-v3 API
-        → Structured elements (text, table, title, figure_caption)
-        → Normalize + deduplicate
-        → Section-aware / table-aware chunking
-        → Metadata attachment (bank, type, field_hint)
+        → file-size guard (>5MB → fallback immediately)
+        → split into single-page PDFs (via pdfplumber)
+        → per-page multi-model cascade:
+            Step 1: nemoretriever-page-elements-v3  (structure)
+            Step 2: nemotron-ocr-v1                 (OCR fallback for failed/image pages)
+            Step 3: nemotron-table-structure-v1     (table enhancement when tables present)
+        → merge per-page results
+        → section-aware / table-aware chunking
+        → attach metadata (bank, field_hint, section_title, model_source)
+        → cache to processed_data/<stem>.json
         → List[StructuredChunk]
 
-Fallback:
-    If NVIDIA API unavailable or USE_NVIDIA_PDF=false
-        → pdfplumber basic text extraction
-        → word-level chunking (existing behaviour)
+Safe fallback:
+    Any stage failure → pdfplumber plain-text extraction.
+    System never fully fails.
+
+Key behaviours:
+    500 errors → retried (up to max_retries)
+    422 errors → not retried (bad request format)
+    401/403    → raises immediately (auth error — user must fix key)
+    PDF > 5MB  → skips NVIDIA, uses pdfplumber
+    Page fails → OCR attempted before giving up on that page
 
 Usage:
-    from pdf_pipeline import process_pdf, PDFPipeline
+    from pdf_pipeline import process_pdf, PDFPipeline, test_single_pdf
 
-    # Process one file
     chunks = process_pdf("data/hdfc_pdfs/hdfc_personal_loan.pdf")
-
-    # Or use the pipeline object for batch processing
-    pipeline = PDFPipeline()
-    chunks = pipeline.process("data/sbi_pdfs/sbi_xpress_credit.pdf")
+    for c in chunks:
+        print(c["bank"], c["doc_type"], c["model_source"], c["text"][:80])
 """
 
 from __future__ import annotations
 
+import base64
 import hashlib
+import io
 import json
 import logging
 import re
 import time
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict, field as dc_field
 from pathlib import Path
 from typing import Any
 
@@ -45,11 +54,10 @@ import requests
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Config (read at import time so module works standalone too)
+# Config helper
 # ---------------------------------------------------------------------------
 
 def _cfg(key: str, default: Any) -> Any:
-    """Lazy config read — avoids circular import if used before dotenv loads."""
     try:
         import config as c
         return getattr(c, key, default)
@@ -58,44 +66,63 @@ def _cfg(key: str, default: Any) -> Any:
 
 
 # ---------------------------------------------------------------------------
-# Output data structure
+# API endpoints
+# ---------------------------------------------------------------------------
+
+_PAGE_ELEMENTS_URL   = "https://ai.api.nvidia.com/v1/cv/nvidia/nemoretriever-page-elements-v3"
+_OCR_URL             = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v1"
+_TABLE_STRUCTURE_URL = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-table-structure-v1"
+
+# File size above which NVIDIA API is skipped entirely (bytes)
+_MAX_PDF_BYTES = 5 * 1024 * 1024   # 5 MB
+
+# NVIDIA base64 image payload size limit (~180 KB encoded).
+# DPI is stepped down if the encoded image exceeds this.
+_MAX_B64_BYTES  = 180_000
+_DPI_HIGH       = 150   # first attempt
+_DPI_LOW        = 100   # retry if image too large at high DPI
+
+# HTTP status codes that warrant a retry
+_RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
+
+# HTTP status codes that are fatal — no point retrying
+_FATAL_STATUSES = {400, 401, 403, 422}
+
+
+# ---------------------------------------------------------------------------
+# StructuredChunk — output data structure
 # ---------------------------------------------------------------------------
 
 @dataclass
 class StructuredChunk:
     """
     Single knowledge unit produced by the PDF pipeline.
-
-    Compatible with DocChunk in retrieval.py — both have the same
-    fields that FAISS indexing needs (text, source, bank, doc_type).
-    Extra fields here are stored in FAISS metadata for filtered retrieval.
+    Fully compatible with DocChunk in retrieval.py.
+    model_source records which model (or fallback) produced this chunk.
     """
-    text:            str
-    source:          str           # original filename
-    bank:            str           # "Axis" | "HDFC" | "ICICI" | "SBI" | "RBI" | …
-    doc_type:        str           # "rule" | "table" | "paragraph" | "regulatory"
-    chunk_id:        int  = 0
-    similarity_score: float = 0.0  # populated at retrieval time
-    page_number:     int  = 0
-    section_title:   str  = ""     # section heading this chunk belongs to
-    element_type:    str  = "text" # "text" | "table" | "title" | "figure_caption"
-    field_hint:      str  = ""     # e.g. "income" | "cibil" | "age" (for rule chunks)
-    structured_data: dict = field(default_factory=dict)  # raw table JSON if element_type=table
-    content_hash:    str  = ""     # md5 of text — used for dedup / cache check
+    text:             str
+    source:           str            # original filename
+    bank:             str
+    doc_type:         str            # "rule"|"table"|"paragraph"|"regulatory"|"pdf"|"ocr"
+    chunk_id:         int   = 0
+    similarity_score: float = 0.0    # populated at retrieval time
+    page_number:      int   = 0
+    section_title:    str   = ""
+    element_type:     str   = "text" # "text"|"table"|"title"|"figure_caption"|"ocr"
+    field_hint:       str   = ""     # "monthly_income"|"credit_score"|…
+    structured_data:  dict  = dc_field(default_factory=dict)
+    content_hash:     str   = ""
+    model_source:     str   = ""     # "page_elements"|"ocr"|"table_structure"|"pdfplumber"
 
     def __post_init__(self):
         if not self.content_hash:
             self.content_hash = hashlib.md5(self.text.encode()).hexdigest()[:12]
 
     def to_doc_chunk(self):
-        """Convert to DocChunk for FAISS indexing (backward compat)."""
         from services.retrieval import DocChunk
         return DocChunk(
-            text=self.text,
-            source=self.source,
-            bank=self.bank,
-            doc_type=self.doc_type,
-            chunk_id=self.chunk_id,
+            text=self.text, source=self.source, bank=self.bank,
+            doc_type=self.doc_type, chunk_id=self.chunk_id,
             similarity_score=self.similarity_score,
         )
 
@@ -104,45 +131,23 @@ class StructuredChunk:
 
 
 # ---------------------------------------------------------------------------
-# Bank detection
+# Bank / field detection
 # ---------------------------------------------------------------------------
 
 _BANK_KEYWORDS: dict[str, list[str]] = {
-    "Axis":  ["axis bank", "axis personal", "axisbank"],
-    "HDFC":  ["hdfc bank", "hdfc personal", "hdfcbank"],
-    "ICICI": ["icici bank", "icici personal", "icicidirect"],
-    "SBI":   ["state bank", "sbi", "xpress credit", "sbi personal"],
-    "RBI":   ["reserve bank", "rbi", "rbi guidelines", "master circular"],
+    "Axis":        ["axis bank", "axis personal", "axisbank"],
+    "HDFC":        ["hdfc bank", "hdfc personal", "hdfcbank"],
+    "ICICI":       ["icici bank", "icici personal", "icicidirect"],
+    "SBI":         ["state bank", "sbi", "xpress credit", "sbi personal"],
+    "RBI":         ["reserve bank", "rbi", "rbi guidelines", "master circular"],
     "Paisabazaar": ["paisabazaar"],
     "BankBazaar":  ["bankbazaar"],
 }
 
-def detect_bank(filename: str, content_sample: str = "") -> str:
-    """
-    Infer bank from filename and first ~500 chars of content.
-    Returns canonical bank name or "Unknown".
-    """
-    text = (filename + " " + content_sample[:500]).lower()
-    for bank, keywords in _BANK_KEYWORDS.items():
-        if any(kw in text for kw in keywords):
-            return bank
-
-    # Path-based fallback (e.g. data/hdfc_pdfs/ → HDFC)
-    path_lower = filename.lower()
-    path_map = {
-        "hdfc": "HDFC", "sbi": "SBI", "icici": "ICICI",
-        "axis": "Axis", "rbi": "RBI",
-    }
-    for key, bank in path_map.items():
-        if key in path_lower:
-            return bank
-
-    return "Unknown"
-
-
-# ---------------------------------------------------------------------------
-# Field hint detection
-# ---------------------------------------------------------------------------
+_BANK_PATH_MAP = {
+    "hdfc": "HDFC", "sbi": "SBI", "icici": "ICICI",
+    "axis": "Axis", "rbi": "RBI",
+}
 
 _FIELD_PATTERNS: list[tuple[str, str]] = [
     (r"income|salary|earning",                "monthly_income"),
@@ -153,85 +158,75 @@ _FIELD_PATTERNS: list[tuple[str, str]] = [
     (r"experience|work.*month|tenure",        "work_experience_months"),
 ]
 
+def detect_bank(filename: str, content_sample: str = "") -> str:
+    text = (filename + " " + content_sample[:500]).lower()
+    for bank, kws in _BANK_KEYWORDS.items():
+        if any(kw in text for kw in kws):
+            return bank
+    for key, bank in _BANK_PATH_MAP.items():
+        if key in filename.lower():
+            return bank
+    return "Unknown"
+
 def detect_field_hint(text: str) -> str:
-    """Return the most likely financial field this chunk is about."""
     text_lower = text.lower()
-    for pattern, field in _FIELD_PATTERNS:
+    for pattern, f in _FIELD_PATTERNS:
         if re.search(pattern, text_lower):
-            return field
+            return f
     return ""
 
 
 # ---------------------------------------------------------------------------
-# Text cleaning utilities
+# Text utilities
 # ---------------------------------------------------------------------------
 
 def _clean_text(text: str) -> str:
-    """Normalise whitespace, remove page artifacts."""
     text = re.sub(r"\s+", " ", text).strip()
-    # Remove common PDF artifacts
     text = re.sub(r"Page\s+\d+\s+of\s+\d+", "", text, flags=re.IGNORECASE)
     text = re.sub(r"©\s*\d{4}.*?(Ltd|Limited|Bank)\b", "", text)
     return text.strip()
 
-
 def _split_into_sentences(text: str, max_words: int) -> list[str]:
-    """Split long text at sentence boundaries, respecting max_words."""
     sentences = re.split(r"(?<=[.!?])\s+", text)
-    chunks: list[str] = []
-    current: list[str] = []
-    current_count = 0
-    for sent in sentences:
-        word_count = len(sent.split())
-        if current_count + word_count > max_words and current:
+    chunks, current, count = [], [], 0
+    for s in sentences:
+        wc = len(s.split())
+        if count + wc > max_words and current:
             chunks.append(" ".join(current))
-            current = [sent]
-            current_count = word_count
+            current, count = [s], wc
         else:
-            current.append(sent)
-            current_count += word_count
+            current.append(s)
+            count += wc
     if current:
         chunks.append(" ".join(current))
     return [c for c in chunks if c.strip()]
 
 
 # ---------------------------------------------------------------------------
-# Table → text conversion
+# Table → text
 # ---------------------------------------------------------------------------
 
 def table_to_text(table_data: dict | list | str) -> tuple[str, dict]:
-    """
-    Convert a table element from NVIDIA Page Elements into readable text
-    plus a structured_data dict for storage.
-
-    Returns: (readable_text, structured_dict)
-    """
     if isinstance(table_data, str):
         return _clean_text(table_data), {"raw": table_data}
 
     if isinstance(table_data, list):
-        # List of rows
-        rows = []
-        structured = {"rows": []}
+        rows, structured_rows = [], []
         for row in table_data:
             if isinstance(row, (list, tuple)):
-                row_text = " | ".join(str(cell).strip() for cell in row if str(cell).strip())
-                rows.append(row_text)
-                structured["rows"].append(list(row))
+                rows.append(" | ".join(str(c).strip() for c in row if str(c).strip()))
+                structured_rows.append(list(row))
             elif isinstance(row, dict):
-                row_text = " | ".join(f"{k}: {v}" for k, v in row.items())
-                rows.append(row_text)
-                structured["rows"].append(row)
+                rows.append(" | ".join(f"{k}: {v}" for k, v in row.items()))
+                structured_rows.append(row)
             else:
                 rows.append(str(row))
-        return _clean_text("\n".join(rows)), structured
+        return _clean_text("\n".join(rows)), {"rows": structured_rows}
 
     if isinstance(table_data, dict):
-        # Common formats: {"headers": [...], "rows": [[...]]}
         headers = table_data.get("headers", table_data.get("columns", []))
         rows    = table_data.get("rows", table_data.get("data", []))
-
-        lines: list[str] = []
+        lines   = []
         if headers:
             lines.append(" | ".join(str(h) for h in headers))
         for row in rows:
@@ -239,7 +234,7 @@ def table_to_text(table_data: dict | list | str) -> tuple[str, dict]:
                 if headers and len(headers) == len(row):
                     lines.append(" | ".join(f"{h}: {v}" for h, v in zip(headers, row)))
                 else:
-                    lines.append(" | ".join(str(cell) for cell in row))
+                    lines.append(" | ".join(str(c) for c in row))
             elif isinstance(row, dict):
                 lines.append(" | ".join(f"{k}: {v}" for k, v in row.items()))
         return _clean_text("\n".join(lines)), table_data
@@ -248,206 +243,643 @@ def table_to_text(table_data: dict | list | str) -> tuple[str, dict]:
 
 
 # ---------------------------------------------------------------------------
-# NVIDIA Page Elements API
+# Page splitting (pdfplumber)
 # ---------------------------------------------------------------------------
 
-_PAGE_ELEMENTS_URL = "https://ai.api.nvidia.com/v1/cv/nvidia/nemoretriever-page-elements-v3"
-
-def _call_page_elements_api(
-    pdf_path: Path,
-    api_key:  str,
-    max_retries: int = 3,
-    retry_delay: float = 2.0,
-) -> list[dict]:
+def pdf_to_images(pdf_path: Path, dpi: int = _DPI_HIGH) -> list[tuple[int, bytes]]:
     """
-    Send a PDF to the NVIDIA nemoretriever-page-elements-v3 API.
+    Convert a PDF to a list of (page_number, png_bytes) tuples using PyMuPDF.
 
-    REQUEST FORMAT (critical):
-        multipart/form-data with the PDF file as "file" field.
-        Do NOT use json= or base64 body — the endpoint is a CV model
-        that expects a raw file upload, identical to an HTML <input type="file">.
+    DPI controls resolution:
+        150 dpi  → good quality, ~100-160 KB per page encoded
+        100 dpi  → compressed, ~50-90 KB per page encoded (fits NVIDIA limit more safely)
 
-    Retry policy:
-        Retries on: timeout, 429 (rate limit), 5xx (server errors)
-        Does NOT retry: 422 (bad request format), 401/403 (auth), 400
-
-    Returns:
-        Normalised list of page dicts: [{"page": N, "elements": [...]}]
+    Falls back to pypdf page-splitting if PyMuPDF is not installed,
+    returning single-page PDF bytes instead of PNGs.  The caller
+    (_nvidia_post) always expects PNG, so the fallback raises ImportError
+    clearly rather than silently sending the wrong format.
 
     Raises:
-        requests.exceptions.HTTPError for non-retryable HTTP errors.
-        RuntimeError if all retries are exhausted.
-
-    Response shapes handled:
-        {"pages": [...]}                  → standard multi-page
-        [{"page": N, "elements": [...]}]  → list directly
-        {"elements": [...]}               → single-page
+        ImportError  if neither PyMuPDF nor a fallback is available.
     """
-    # Only Authorization + Accept — do NOT set Content-Type manually.
-    # requests sets it automatically to multipart/form-data with the
-    # correct boundary when files= is used.
+    try:
+        import fitz   # PyMuPDF
+        doc    = fitz.open(str(pdf_path))
+        images: list[tuple[int, bytes]] = []
+        matrix = fitz.Matrix(dpi / 72, dpi / 72)   # 72 DPI is the PDF default
+
+        for page_index in range(len(doc)):
+            page    = doc[page_index]
+            pixmap  = page.get_pixmap(matrix=matrix, alpha=False)
+            png_bytes = pixmap.tobytes("png")
+
+            logger.debug(
+                "[pdf_to_images] p%d  dpi=%d  size=%.1f KB",
+                page_index + 1, dpi, len(png_bytes) / 1024,
+            )
+            images.append((page_index + 1, png_bytes))
+
+        doc.close()
+        logger.info(
+            "[pdf_to_images] %s → %d page image(s) at %d DPI",
+            pdf_path.name, len(images), dpi,
+        )
+        return images
+
+    except ImportError:
+        raise ImportError(
+            "PyMuPDF (fitz) is required for NVIDIA CV API calls. "
+            "Install it with:  pip install pymupdf"
+        )
+
+
+def _image_to_b64(png_bytes: bytes) -> str:
+    """Encode PNG bytes as a base64 string."""
+    return base64.b64encode(png_bytes).decode("utf-8")
+
+
+def _compress_image(
+    pdf_path: Path,
+    page_index: int,
+    dpi: int = _DPI_HIGH,
+) -> tuple[bytes, int, bool]:
+    """
+    Render one PDF page to PNG at the given DPI.
+    If the base64 size exceeds _MAX_B64_BYTES, retry at _DPI_LOW.
+
+    Returns:
+        (png_bytes, dpi_used, was_compressed)
+    """
+    import fitz
+    doc = fitz.open(str(pdf_path))
+    try:
+        page   = doc[page_index]
+        matrix = fitz.Matrix(dpi / 72, dpi / 72)
+        pix    = page.get_pixmap(matrix=matrix, alpha=False)
+        png_bytes = pix.tobytes("png")
+    finally:
+        doc.close()
+
+    b64_len = len(_image_to_b64(png_bytes))
+
+    if b64_len < _MAX_B64_BYTES:
+        return png_bytes, dpi, False
+
+    # Too large — retry at lower DPI
+    logger.info(
+        "[PDFPipeline] p%d  image %.0f KB > limit %.0f KB — compressing to %d DPI",
+        page_index + 1, b64_len / 1024, _MAX_B64_BYTES / 1024, _DPI_LOW,
+    )
+    doc2   = fitz.open(str(pdf_path))
+    try:
+        page2  = doc2[page_index]
+        matrix2 = fitz.Matrix(_DPI_LOW / 72, _DPI_LOW / 72)
+        pix2   = page2.get_pixmap(matrix=matrix2, alpha=False)
+        png_bytes2 = pix2.tobytes("png")
+    finally:
+        doc2.close()
+
+    return png_bytes2, _DPI_LOW, True
+
+
+# kept for backward-compat (used by old tests that import _split_pdf_pages)
+def _split_pdf_pages(pdf_path: Path) -> list[bytes]:
+    """Legacy alias — returns single-page PDF bytes. Use pdf_to_images() instead."""
+    try:
+        import pypdf
+        reader = pypdf.PdfReader(str(pdf_path))
+        pages: list[bytes] = []
+        for page in reader.pages:
+            writer = pypdf.PdfWriter()
+            writer.add_page(page)
+            buf = io.BytesIO()
+            writer.write(buf)
+            pages.append(buf.getvalue())
+        return pages
+    except ImportError:
+        return [pdf_path.read_bytes()]
+
+
+# ---------------------------------------------------------------------------
+# Low-level NVIDIA API caller (shared by all three endpoints)
+# ---------------------------------------------------------------------------
+
+def _nvidia_post(
+    url:         str,
+    api_key:     str,
+    image_bytes: bytes,        # PNG bytes — NOT pdf bytes, NOT a file path
+    filename:    str,
+    max_retries: int   = 3,
+    retry_delay: float = 2.0,
+    timeout:     int   = 60,
+) -> dict | list:
+    """
+    POST a PNG image to any NVIDIA CV endpoint using the correct format:
+        JSON payload: {"input": [{"type": "image_url",
+                                  "url":  "data:image/png;base64,<b64>"}]}
+
+    This is the format all NVIDIA multimodal CV models expect.
+    Sending PDFs directly (multipart/form-data) causes HTTP 500 errors.
+
+    Retry policy:
+        Retried:     timeout, 429, 500, 502, 503, 504
+        Not retried: 400, 401, 403, 422
+
+    Returns:
+        Parsed JSON response dict or list.
+    Raises:
+        requests.exceptions.HTTPError for fatal status codes.
+        RuntimeError if all retries exhausted.
+    """
+    image_b64 = _image_to_b64(image_bytes)
+    b64_len   = len(image_b64)
+
+    if b64_len >= _MAX_B64_BYTES:
+        # Caller should have pre-compressed; warn but proceed anyway
+        logger.warning(
+            "[NVIDIA API] Image b64 size %d exceeds limit %d for %s — "
+            "API may reject; consider lower DPI",
+            b64_len, _MAX_B64_BYTES, filename,
+        )
+
+    logger.debug(
+        "[NVIDIA API] %s  image_b64_len=%d (%.1f KB)",
+        url.split("/")[-1], b64_len, b64_len / 1024,
+    )
+
     headers = {
         "Authorization": f"Bearer {api_key}",
-        "Accept": "application/json",
+        "Content-Type":  "application/json",
+        "Accept":        "application/json",
+    }
+    payload = {
+        "input": [
+            {
+                "type": "image_url",
+                "url":  f"data:image/png;base64,{image_b64}",
+            }
+        ]
     }
 
     last_err: Exception | None = None
 
     for attempt in range(1, max_retries + 1):
         try:
-            logger.info("[PDFPipeline] Attempt %d/%d — %s", attempt, max_retries, pdf_path.name)
-
-            with open(pdf_path, "rb") as fh:
-                resp = requests.post(
-                    _PAGE_ELEMENTS_URL,
-                    headers=headers,
-                    files={"file": (pdf_path.name, fh, "application/pdf")},
-                    timeout=60,
-                )
-
-            # ── Detailed error logging BEFORE raise_for_status ────────────
-            if resp.status_code == 422:
-                logger.error(
-                    "[PDFPipeline] 422 Unprocessable Entity — "
-                    "request format rejected by NVIDIA API. "
-                    "Response body: %s", resp.text[:500],
-                )
-                # 422 means the server understood the request but rejected
-                # its content — retrying with same payload won't help.
-                raise requests.exceptions.HTTPError(
-                    f"422 Unprocessable Entity: {resp.text[:200]}",
-                    response=resp,
-                )
-
-            if resp.status_code == 401:
-                logger.error("[PDFPipeline] 401 Unauthorized — check NVIDIA_API_KEY")
-                raise requests.exceptions.HTTPError("401 Unauthorized", response=resp)
-
-            if resp.status_code == 400:
-                logger.error(
-                    "[PDFPipeline] 400 Bad Request — %s", resp.text[:300]
-                )
-                raise requests.exceptions.HTTPError(
-                    f"400 Bad Request: {resp.text[:200]}", response=resp
-                )
-
-            resp.raise_for_status()   # catches any other 4xx/5xx
-
-            data = resp.json()
-
-            # ── Normalise response shape ──────────────────────────────────
-            if isinstance(data, list):
-                pages = data
-            elif "pages" in data:
-                pages = data["pages"]
-            elif "elements" in data:
-                pages = [{"page": 1, "elements": data["elements"]}]
-            else:
-                # Unknown shape — log and return as-is for best-effort parsing
-                logger.warning(
-                    "[PDFPipeline] Unexpected response shape: %s",
-                    list(data.keys()) if isinstance(data, dict) else type(data),
-                )
-                pages = data
-
-            # ── Log success ───────────────────────────────────────────────
-            total_elements = sum(len(p.get("elements", [])) for p in pages) if isinstance(pages, list) else 0
-            type_counts: dict[str, int] = {}
-            if isinstance(pages, list):
-                for p in pages:
-                    for e in p.get("elements", []):
-                        t = e.get("type", "unknown")
-                        type_counts[t] = type_counts.get(t, 0) + 1
-
-            logger.info(
-                "[PDFPipeline] NVIDIA extraction SUCCESS — "
-                "%d pages, %d elements, types=%s",
-                len(pages) if isinstance(pages, list) else "?",
-                total_elements,
-                type_counts,
+            resp = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=timeout,
             )
-            return pages
 
-        except requests.exceptions.Timeout:
-            last_err = TimeoutError(f"Timed out on attempt {attempt}")
-            logger.warning("[PDFPipeline] Timeout on attempt %d", attempt)
+            # ── Detailed pre-raise logging ────────────────────────────────
+            if resp.status_code in _FATAL_STATUSES:
+                logger.error(
+                    "[NVIDIA API] HTTP %d %s  url=%s  body=%s",
+                    resp.status_code, resp.reason, url.split("/")[-1], resp.text[:400],
+                )
+                if resp.status_code in (401, 403):
+                    raise requests.exceptions.HTTPError(
+                        f"HTTP {resp.status_code} — check NVIDIA_API_KEY", response=resp
+                    )
+                raise requests.exceptions.HTTPError(
+                    f"HTTP {resp.status_code}: {resp.text[:200]}", response=resp
+                )
 
-        except requests.exceptions.HTTPError as e:
-            last_err = e
-            status = e.response.status_code if e.response is not None else 0
-            # Only retry on rate limit (429) or server errors (5xx)
-            if status in (429, 502, 503, 504):
+            if resp.status_code in _RETRYABLE_STATUSES:
                 wait = retry_delay * attempt
                 logger.warning(
-                    "[PDFPipeline] HTTP %d on attempt %d — retrying in %.1fs",
-                    status, attempt, wait,
+                    "[NVIDIA API] HTTP %d on attempt %d/%d for %s — retrying in %.1fs  body=%s",
+                    resp.status_code, attempt, max_retries,
+                    url.split("/")[-1], wait, resp.text[:200],
+                )
+                last_err = requests.exceptions.HTTPError(
+                    f"HTTP {resp.status_code}", response=resp
                 )
                 time.sleep(wait)
-            else:
-                # 400, 401, 403, 422 etc. — retrying won't help
-                logger.error(
-                    "[PDFPipeline] Non-retryable HTTP %d — aborting retries: %s",
-                    status, e,
-                )
-                raise
+                continue
+
+            resp.raise_for_status()
+            return resp.json()
+
+        except requests.exceptions.Timeout:
+            wait = retry_delay * attempt
+            last_err = TimeoutError(f"Timed out on attempt {attempt}")
+            logger.warning(
+                "[NVIDIA API] Timeout on attempt %d/%d for %s — retrying in %.1fs",
+                attempt, max_retries, url.split("/")[-1], wait,
+            )
+            if attempt < max_retries:
+                time.sleep(wait)
+
+        except requests.exceptions.HTTPError:
+            raise
 
         except Exception as e:
             last_err = e
             logger.warning(
-                "[PDFPipeline] Unexpected error on attempt %d: %s",
-                attempt, e,
+                "[NVIDIA API] Unexpected error on attempt %d/%d: %s",
+                attempt, max_retries, e,
             )
-
-        if attempt < max_retries:
-            time.sleep(retry_delay)
+            if attempt < max_retries:
+                time.sleep(retry_delay)
 
     raise RuntimeError(
-        f"NVIDIA Page Elements API failed after {max_retries} attempts: {last_err}"
+        f"NVIDIA API ({url.split('/')[-1]}) failed after {max_retries} attempts: {last_err}"
     )
 
 
 # ---------------------------------------------------------------------------
-# Element normalizer
+# Step 1 — Page Elements
 # ---------------------------------------------------------------------------
 
-def _normalise_elements(raw_pages: list[dict]) -> list[dict]:
+def _call_page_elements(
+    page_bytes: bytes,
+    filename:   str,
+    api_key:    str,
+    max_retries: int   = 3,
+    retry_delay: float = 2.0,
+) -> list[dict]:
     """
-    Convert the raw NVIDIA API response into a flat, consistent element list.
-    Each element: {type, content, page, bbox}
+    Call nemoretriever-page-elements-v3 on a single-page PDF.
+    Returns normalised element list: [{type, content, page, bbox}, …]
+    Raises on non-retryable errors, RuntimeError on exhausted retries.
     """
+    data = _nvidia_post(
+        _PAGE_ELEMENTS_URL, api_key, page_bytes, filename,
+        max_retries=max_retries, retry_delay=retry_delay,
+    )
+
+    # Normalise response shape.
+    # NVIDIA NIM returns {"data": [...], "usage": {...}}
+    # Some endpoints return {"pages": [...]}, {"elements": [...]}, or a bare list.
+    if isinstance(data, list):
+        raw_pages = data
+    elif isinstance(data, dict):
+        if "data" in data:
+            # Primary NIM format: {"data": [<element>, ...], "usage": {...}}
+            raw_pages = [{"page": 1, "elements": data["data"]}]
+        elif "pages" in data:
+            raw_pages = data["pages"]
+        elif "elements" in data:
+            raw_pages = [{"page": 1, "elements": data["elements"]}]
+        else:
+            logger.warning(
+                "[PageElements] Unexpected response shape — keys=%s",
+                list(data.keys()),
+            )
+            raw_pages = []
+    else:
+        logger.warning("[PageElements] Unexpected response type: %s", type(data))
+        raw_pages = []
+
     elements: list[dict] = []
     for page_data in raw_pages:
-        page_num = page_data.get("page", 0)
+        pn = page_data.get("page", 1)
         for elem in page_data.get("elements", []):
+            # NIM uses "label" for element type and "text" for content;
+            # older / other shapes use "type" and "content"
             elements.append({
-                "type":    elem.get("type", "text"),
-                "content": elem.get("content", ""),
-                "page":    page_num,
+                "type":    elem.get("label") or elem.get("type", "text"),
+                "content": elem.get("text")  or elem.get("content", ""),
+                "page":    pn,
                 "bbox":    elem.get("bbox", []),
             })
     return elements
 
 
 # ---------------------------------------------------------------------------
-# Section-aware chunker
+# Step 2 — OCR fallback
+# ---------------------------------------------------------------------------
+
+def _call_ocr(
+    page_bytes:  bytes,
+    filename:    str,
+    api_key:     str,
+    max_retries: int   = 2,
+    retry_delay: float = 1.5,
+) -> list[dict]:
+    """
+    Call nemotron-ocr-v1 on a page that page-elements failed on.
+    Returns elements in the same normalised format as _call_page_elements.
+    """
+    data = _nvidia_post(
+        _OCR_URL, api_key, page_bytes, filename,
+        max_retries=max_retries, retry_delay=retry_delay,
+    )
+
+    # OCR response shape varies — normalise to our element format.
+    # NIM primary format: {"data": [{"text": "...", ...}, ...], "usage": {...}}
+    elements: list[dict] = []
+    if isinstance(data, dict):
+        if "data" in data:
+            # Primary NIM format
+            for item in data["data"]:
+                t = item.get("text", item.get("content", "")) if isinstance(item, dict) else str(item)
+                if str(t).strip():
+                    elements.append({"type": "text", "content": _clean_text(str(t)), "page": 1, "bbox": []})
+        else:
+            text = data.get("text", data.get("content", data.get("result", "")))
+            if isinstance(text, str) and text.strip():
+                elements.append({"type": "text", "content": _clean_text(text), "page": 1, "bbox": []})
+            elif isinstance(text, list):
+                for item in text:
+                    t = item.get("text", item.get("content", str(item))) if isinstance(item, dict) else str(item)
+                    if t.strip():
+                        elements.append({"type": "text", "content": _clean_text(t), "page": 1, "bbox": []})
+    elif isinstance(data, list):
+        for item in data:
+            t = item.get("text", item.get("content", "")) if isinstance(item, dict) else str(item)
+            if str(t).strip():
+                elements.append({"type": "text", "content": _clean_text(str(t)), "page": 1, "bbox": []})
+    elif isinstance(data, str) and data.strip():
+        elements.append({"type": "text", "content": _clean_text(data), "page": 1, "bbox": []})
+
+    return elements
+
+
+# ---------------------------------------------------------------------------
+# Step 3 — Table structure enhancement
+# ---------------------------------------------------------------------------
+
+def _call_table_structure(
+    page_bytes:  bytes,
+    filename:    str,
+    api_key:     str,
+    max_retries: int   = 2,
+    retry_delay: float = 1.5,
+) -> list[dict]:
+    """
+    Call nemotron-table-structure-v1 on a page that contains tables.
+    Returns enhanced table elements merged into our element format.
+    """
+    data = _nvidia_post(
+        _TABLE_STRUCTURE_URL, api_key, page_bytes, filename,
+        max_retries=max_retries, retry_delay=retry_delay,
+    )
+
+    elements: list[dict] = []
+    tables = []
+    if isinstance(data, dict):
+        if "data" in data:
+            # Primary NIM format: {"data": [<table>, ...], "usage": {...}}
+            tables = data["data"]
+        else:
+            tables = data.get("tables", data.get("results", [data] if "cells" in data or "rows" in data else []))
+    elif isinstance(data, list):
+        tables = data
+
+    for tbl in tables:
+        if not isinstance(tbl, dict):
+            continue
+        readable, structured = table_to_text(tbl)
+        if readable.strip():
+            elements.append({
+                "type":            "table",
+                "content":         tbl,
+                "content_text":    readable,
+                "page":            tbl.get("page", 1),
+                "bbox":            tbl.get("bbox", []),
+            })
+
+    return elements
+
+
+# ---------------------------------------------------------------------------
+# Per-page processor (multi-model cascade)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class _PageResult:
+    page_number: int
+    elements:    list[dict]
+    model_used:  str     # "page_elements" | "ocr" | "table_structure" | "pdfplumber"
+    success:     bool
+
+def _process_single_page(
+    page_bytes:   bytes,
+    page_number:  int,
+    source_name:  str,
+    api_key:      str,
+    max_retries:  int,
+    retry_delay:  float,
+) -> _PageResult:
+    """
+    Multi-model cascade for a single page.
+
+    Step 1: Try page_elements  → if OK, optionally enhance tables with table_structure
+    Step 2: If step 1 fails    → try OCR
+    Step 3: If step 2 fails    → return empty (caller falls back to pdfplumber for that page)
+    """
+    fname = f"page_{page_number}_{source_name}"
+
+    # ── Step 1: Page Elements (layout + structure) ───────────────────────
+    pe_elements: list[dict] = []
+    pe_ok = False
+    try:
+        pe_elements = _call_page_elements(
+            page_bytes, fname, api_key,
+            max_retries=max_retries, retry_delay=retry_delay,
+        )
+        # Annotate page number; empty list is a valid response (blank page),
+        # not treated as a failure — only an API exception counts as failure.
+        for e in pe_elements:
+            e["page"] = page_number
+        pe_ok = True
+
+        # Enhance tables if detected
+        has_tables = any(e.get("type") == "table" for e in pe_elements)
+        if has_tables:
+            try:
+                table_elements = _call_table_structure(
+                    page_bytes, fname, api_key,
+                    max_retries=1, retry_delay=retry_delay,
+                )
+                if table_elements:
+                    non_table = [e for e in pe_elements if e.get("type") != "table"]
+                    for te in table_elements:
+                        te["page"] = page_number
+                    pe_elements = non_table + table_elements
+                    logger.info(
+                        "[PDFPipeline] p%d table_structure enhanced %d table(s)",
+                        page_number, len(table_elements),
+                    )
+            except Exception as te:
+                logger.debug("[PDFPipeline] p%d table_structure skipped: %s", page_number, te)
+
+        type_counts = {e.get("type","?"): 0 for e in pe_elements}
+        for e in pe_elements:
+            type_counts[e.get("type","?")] += 1
+        logger.info("[PDFPipeline] p%d  page_elements OK  types=%s", page_number, type_counts)
+
+    except Exception as e1:
+        logger.warning(
+            "[PDFPipeline] p%d  page_elements FAILED (%s) — will rely on OCR",
+            page_number, e1,
+        )
+
+    # ── Step 2: OCR — always runs to capture text page_elements may miss ──
+    # Runs regardless of whether page_elements succeeded, because
+    # nemoretriever-page-elements focuses on layout while nemotron-ocr
+    # specialises in reading text — their outputs are complementary.
+    ocr_elements: list[dict] = []
+    try:
+        ocr_elements = _call_ocr(
+            page_bytes, fname, api_key,
+            max_retries=max(1, max_retries - 1), retry_delay=retry_delay,
+        )
+        for e in ocr_elements:
+            e["page"]         = page_number
+            e["element_type"] = "ocr"
+        if ocr_elements:
+            logger.info(
+                "[PDFPipeline] p%d  OCR OK  elements=%d", page_number, len(ocr_elements),
+            )
+    except Exception as e2:
+        logger.warning("[PDFPipeline] p%d  OCR FAILED (%s)", page_number, e2)
+
+    # ── Merge: page_elements provides structure; OCR provides text ────────
+    # Strategy: use page_elements as the base; append OCR text elements that
+    # are not already represented (avoids duplication of existing text nodes).
+    if pe_ok or ocr_elements:
+        # "text", "paragraph", "list_item" carry readable body text.
+        # "title" and "figure_caption" are structural labels — they don't
+        # count as text coverage for the purposes of OCR gap-filling.
+        has_text_from_pe = any(
+            e.get("type") in ("text", "paragraph", "list_item")
+            for e in pe_elements
+        )
+        merged = list(pe_elements)
+        if ocr_elements and not has_text_from_pe:
+            # page_elements gave us structure but no readable text —
+            # add OCR text elements to fill the gap
+            merged.extend(ocr_elements)
+        elif ocr_elements and not pe_ok:
+            # page_elements failed entirely — use OCR output
+            merged = ocr_elements
+
+        if merged:
+            model_tag = "page_elements+ocr" if (pe_ok and ocr_elements and not has_text_from_pe)                         else ("ocr" if not pe_ok else "page_elements")
+            return _PageResult(page_number, merged, model_tag, True)
+
+    # ── All NVIDIA models failed → signal pdfplumber gap-fill ─────────────
+    logger.warning(
+        "[PDFPipeline] p%d  all models failed — page will use pdfplumber", page_number,
+    )
+    return _PageResult(page_number, [], "pdfplumber", False)
+
+
+# ---------------------------------------------------------------------------
+# Full-PDF NVIDIA pipeline
+# ---------------------------------------------------------------------------
+
+def _call_page_elements_api(
+    pdf_path:    Path,
+    api_key:     str,
+    max_retries: int   = 3,
+    retry_delay: float = 2.0,
+) -> list[dict]:
+    """
+    Public entry point for the multi-model page-level pipeline.
+
+    Returns normalised list of page dicts: [{"page": N, "elements": [...], "model": …}]
+
+    Behaviour:
+        - File > 5MB → raises FileSizeError immediately (caller falls back)
+        - Splits PDF into per-page bytes (pypdf)
+        - Runs each page through the 3-step cascade in sequence
+        - Collects results; failed pages marked for pdfplumber recovery
+    """
+    # ── File size guard ───────────────────────────────────────────────────
+    size_bytes = pdf_path.stat().st_size
+    if size_bytes > _MAX_PDF_BYTES:
+        raise FileSizeError(
+            f"{pdf_path.name} is {size_bytes/1024/1024:.1f} MB "
+            f"(limit {_MAX_PDF_BYTES/1024/1024:.0f} MB) — using pdfplumber"
+        )
+
+    # ── Convert PDF pages to PNG images (required by NVIDIA CV models) ────
+    try:
+        page_images = pdf_to_images(pdf_path, dpi=_DPI_HIGH)
+    except ImportError as ie:
+        # PyMuPDF not installed — fall back immediately
+        logger.warning("[PDFPipeline] %s — using pdfplumber", ie)
+        raise FileSizeError("PyMuPDF not available") from ie
+
+    logger.info(
+        "[PDFPipeline] Processing %s — %d page(s), %.1f MB",
+        pdf_path.name, len(page_images), size_bytes / 1024 / 1024,
+    )
+
+    all_pages: list[dict] = []
+    failed_page_indices: list[int] = []
+
+    for page_num, png_bytes in page_images:
+        i = page_num - 1
+
+        # Check size and compress if needed — avoids silent 500 from oversized image
+        b64_len = len(_image_to_b64(png_bytes))
+        compressed = False
+        if b64_len >= _MAX_B64_BYTES:
+            logger.info(
+                "[PDFPipeline] p%d  %.0f KB > limit %.0f KB — recompressing at %d DPI",
+                page_num, b64_len / 1024, _MAX_B64_BYTES / 1024, _DPI_LOW,
+            )
+            try:
+                png_bytes, _, compressed = _compress_image(pdf_path, i, dpi=_DPI_HIGH)
+            except Exception as ce:
+                logger.warning("[PDFPipeline] p%d compression failed: %s", page_num, ce)
+
+        if compressed:
+            logger.info(
+                "[PDFPipeline] p%d  compressed to %d DPI  new_size=%.0f KB",
+                page_num, _DPI_LOW, len(_image_to_b64(png_bytes)) / 1024,
+            )
+
+        result = _process_single_page(
+            png_bytes, page_num, pdf_path.name,
+            api_key, max_retries, retry_delay,
+        )
+        if result.success and result.elements:
+            all_pages.append({
+                "page":     page_num,
+                "elements": result.elements,
+                "model":    result.model_used,
+            })
+        else:
+            failed_page_indices.append(i)
+
+    # ── Log summary ────────────────────────────────────────────────────────
+    model_counts: dict[str, int] = {}
+    for p in all_pages:
+        m = p.get("model", "unknown")
+        model_counts[m] = model_counts.get(m, 0) + 1
+
+    logger.info(
+        "[PDFPipeline] %s complete — %d/%d pages succeeded  models=%s  fallback_pages=%d",
+        pdf_path.name, len(all_pages), len(page_images),
+        model_counts, len(failed_page_indices),
+    )
+
+    return all_pages, failed_page_indices
+
+
+class FileSizeError(Exception):
+    """Raised when a PDF exceeds the configured size limit."""
+
+
+# ---------------------------------------------------------------------------
+# Element → StructuredChunk conversion
 # ---------------------------------------------------------------------------
 
 def _chunk_elements(
-    elements: list[dict],
-    bank:     str,
-    source:   str,
+    elements:          list[dict],
+    bank:              str,
+    source:            str,
+    model_source:      str = "page_elements",
     section_max_words: int = 400,
     table_max_words:   int = 300,
 ) -> list[StructuredChunk]:
-    """
-    Convert a flat element list into StructuredChunks.
-
-    Strategy:
-    - title elements → update current section heading
-    - text/list_item → accumulate into section buffer, flush at max_words
-    - table → convert to text immediately (one chunk per table)
-    - figure_caption → short chunk on its own
-    """
     chunks:          list[StructuredChunk] = []
     chunk_id:        int  = 0
     current_section: str  = ""
@@ -459,122 +891,125 @@ def _chunk_elements(
         if not buffer_words:
             return
         text = _clean_text(" ".join(buffer_words))
-        if len(text.split()) < 5:   # skip noise-level fragments
+        if len(text.split()) < 5:
             buffer_words = []
             return
         chunks.append(StructuredChunk(
-            text=text,
-            source=source,
-            bank=bank,
+            text=text, source=source, bank=bank,
             doc_type="rule" if detect_field_hint(text) else "paragraph",
-            chunk_id=chunk_id,
-            page_number=buffer_page,
-            section_title=current_section,
-            element_type="text",
-            field_hint=detect_field_hint(text),
+            chunk_id=chunk_id, page_number=buffer_page,
+            section_title=current_section, element_type="text",
+            field_hint=detect_field_hint(text), model_source=model_source,
         ))
         chunk_id += 1
         buffer_words = []
 
     for elem in elements:
-        etype   = elem.get("type", "text")
-        content = elem.get("content", "")
+        etype   = elem.get("element_type") or elem.get("type", "text")
+        # table elements may have pre-rendered text from table_structure step
+        content = elem.get("content_text") or elem.get("content", "")
         page    = elem.get("page", 0)
+        src     = elem.get("element_type", model_source) if elem.get("element_type") == "ocr" else model_source
 
-        # ── Title / section heading ────────────────────────────────────────
         if etype in ("title", "heading"):
             flush_buffer()
             current_section = _clean_text(str(content)) if content else ""
-            # Also store the title itself as a tiny chunk (helps retrieval)
             if current_section and len(current_section.split()) >= 2:
                 chunks.append(StructuredChunk(
-                    text=current_section,
-                    source=source, bank=bank,
+                    text=current_section, source=source, bank=bank,
                     doc_type="paragraph", chunk_id=chunk_id,
-                    page_number=page, section_title="",
-                    element_type="title",
+                    page_number=page, element_type="title", model_source=src,
                 ))
                 chunk_id += 1
 
-        # ── Table ─────────────────────────────────────────────────────────
         elif etype == "table":
             flush_buffer()
-            readable, structured = table_to_text(content)
+            # content_text already rendered by table_structure step if present
+            if isinstance(content, str) and content.strip():
+                readable = content
+                structured = {"rendered": content}
+            else:
+                readable, structured = table_to_text(elem.get("content", content))
             if not readable.strip():
                 continue
-
-            # Split large tables into sub-chunks
-            sub_texts = _split_into_sentences(readable, table_max_words)
-            for sub in sub_texts:
+            for sub in _split_into_sentences(readable, table_max_words):
                 if len(sub.split()) < 3:
                     continue
                 chunks.append(StructuredChunk(
-                    text=sub,
-                    source=source, bank=bank,
+                    text=sub, source=source, bank=bank,
                     doc_type="table", chunk_id=chunk_id,
                     page_number=page, section_title=current_section,
-                    element_type="table",
-                    field_hint=detect_field_hint(sub),
-                    structured_data=structured,
+                    element_type="table", field_hint=detect_field_hint(sub),
+                    structured_data=structured, model_source=src,
                 ))
                 chunk_id += 1
 
-        # ── Figure caption ────────────────────────────────────────────────
         elif etype == "figure_caption":
             flush_buffer()
             text = _clean_text(str(content))
             if text and len(text.split()) >= 4:
                 chunks.append(StructuredChunk(
-                    text=text,
-                    source=source, bank=bank,
+                    text=text, source=source, bank=bank,
                     doc_type="paragraph", chunk_id=chunk_id,
                     page_number=page, section_title=current_section,
-                    element_type="figure_caption",
+                    element_type="figure_caption", model_source=src,
                 ))
                 chunk_id += 1
 
-        # ── Regular text / list_item ──────────────────────────────────────
-        else:
+        else:   # text, list_item, ocr
             text = _clean_text(str(content))
             if not text:
                 continue
             words = text.split()
             if not buffer_page:
                 buffer_page = page
-
-            # Flush if adding this text would exceed section_max_words
             if len(buffer_words) + len(words) > section_max_words:
                 flush_buffer()
                 buffer_page = page
-
             buffer_words.extend(words)
 
-    flush_buffer()  # final flush
+    flush_buffer()
     return chunks
 
 
 # ---------------------------------------------------------------------------
-# Fallback: basic pdfplumber extraction
+# pdfplumber fallback (per-page capable)
 # ---------------------------------------------------------------------------
 
-def _fallback_extract(pdf_path: Path, bank: str) -> list[StructuredChunk]:
+def _fallback_extract(
+    pdf_path:          Path,
+    bank:              str,
+    failed_page_indices: list[int] | None = None,
+) -> list[StructuredChunk]:
     """
-    Plain text extraction using pdfplumber (no NVIDIA API).
-    Used when USE_NVIDIA_PDF=false or when the API call fails.
-    Produces word-level overlapping chunks (same as the old retrieval.py behaviour).
+    Plain text extraction using pdfplumber.
+    If failed_page_indices is provided, only those pages are extracted
+    (used to fill in gaps after partial NVIDIA success).
+    If None, the full document is extracted.
     """
-    max_words   = _cfg("PDF_SECTION_CHUNK_MAX", 512)
+    max_words     = _cfg("PDF_SECTION_CHUNK_MAX", 512)
     chunk_overlap = _cfg("CHUNK_OVERLAP", 64)
 
     try:
         import pdfplumber
         with pdfplumber.open(str(pdf_path)) as pdf:
-            full_text = "\n".join(p.extract_text() or "" for p in pdf.pages)
+            pages = pdf.pages
+            if failed_page_indices is not None:
+                pages_to_read = [pdf.pages[i] for i in failed_page_indices if i < len(pdf.pages)]
+            else:
+                pages_to_read = list(pdf.pages)
+            full_text = "\n".join(p.extract_text() or "" for p in pages_to_read)
     except ImportError:
         try:
             import pypdf
             reader = pypdf.PdfReader(str(pdf_path))
-            full_text = "\n".join(p.extract_text() or "" for p in reader.pages)
+            if failed_page_indices is not None:
+                full_text = "\n".join(
+                    reader.pages[i].extract_text() or ""
+                    for i in failed_page_indices if i < len(reader.pages)
+                )
+            else:
+                full_text = "\n".join(p.extract_text() or "" for p in reader.pages)
         except ImportError:
             logger.error("[PDFPipeline] No PDF lib available. Install pdfplumber or pypdf.")
             return []
@@ -588,16 +1023,13 @@ def _fallback_extract(pdf_path: Path, bank: str) -> list[StructuredChunk]:
     start = 0
     while start < len(words):
         end  = min(start + max_words, len(words))
-        text = " ".join(words[start:end])
-        text = _clean_text(text)
+        text = _clean_text(" ".join(words[start:end]))
         if len(text.split()) >= 5:
             chunks.append(StructuredChunk(
-                text=text,
-                source=pdf_path.name,
-                bank=bank,
-                doc_type="pdf",
-                chunk_id=chunk_id,
+                text=text, source=pdf_path.name, bank=bank,
+                doc_type="pdf", chunk_id=chunk_id,
                 field_hint=detect_field_hint(text),
+                model_source="pdfplumber",
             ))
             chunk_id += 1
         if end == len(words):
@@ -608,246 +1040,266 @@ def _fallback_extract(pdf_path: Path, bank: str) -> list[StructuredChunk]:
 
 
 # ---------------------------------------------------------------------------
-# Main pipeline class
+# PDFPipeline — orchestrator
 # ---------------------------------------------------------------------------
 
 class PDFPipeline:
     """
-    Orchestrates PDF → structured chunks.
+    Orchestrates PDF → StructuredChunk list.
 
-    Behaviour:
-        USE_NVIDIA_PDF=true  → NVIDIA Page Elements API → structured chunks
-        USE_NVIDIA_PDF=false → pdfplumber fallback → word-level chunks
+    USE_NVIDIA_PDF=true:
+        1. File size check  (> 5MB → fallback)
+        2. Split into pages
+        3. Per-page cascade: page_elements → OCR → table_structure
+        4. pdfplumber for any failed pages (partial recovery)
+        5. Merge all chunks + re-number
 
-    Caching:
-        Processed results are saved to processed_data/<stem>.json.
-        On subsequent runs, if the file hash matches, the cache is reused
-        (avoids expensive API calls for unchanged PDFs).
+    USE_NVIDIA_PDF=false:
+        → pdfplumber only (fast, no API cost)
     """
 
     def __init__(
         self,
-        api_key:    str  | None = None,
-        use_nvidia: bool | None = None,
+        api_key:       str  | None = None,
+        use_nvidia:    bool | None = None,
         processed_dir: Path | None = None,
     ):
-        self.api_key       = api_key       or _cfg("NVIDIA_API_KEY", "")
-        self.use_nvidia    = use_nvidia    if use_nvidia is not None else _cfg("USE_NVIDIA_PDF", False)
+        self.api_key       = api_key    or _cfg("NVIDIA_API_KEY", "")
+        self.use_nvidia    = use_nvidia if use_nvidia is not None else _cfg("USE_NVIDIA_PDF", False)
         self.processed_dir = processed_dir or Path(_cfg("PROCESSED_DATA_DIR", "processed_data"))
         self.processed_dir.mkdir(parents=True, exist_ok=True)
 
-        self._max_retries  = int(_cfg("PDF_API_MAX_RETRIES", 3))
-        self._retry_delay  = float(_cfg("PDF_API_RETRY_DELAY", 2.0))
-        self._section_max  = int(_cfg("PDF_SECTION_CHUNK_MAX", 400))
-        self._table_max    = int(_cfg("PDF_TABLE_CHUNK_MAX",   300))
+        self._max_retries = int(_cfg("PDF_API_MAX_RETRIES", 3))
+        self._retry_delay = float(_cfg("PDF_API_RETRY_DELAY", 2.0))
+        self._section_max = int(_cfg("PDF_SECTION_CHUNK_MAX", 400))
+        self._table_max   = int(_cfg("PDF_TABLE_CHUNK_MAX",   300))
 
-    # ── Cache helpers ──────────────────────────────────────────────────────
+    def _file_hash(self, p: Path) -> str:
+        return hashlib.md5(p.read_bytes()).hexdigest()
 
-    def _file_hash(self, pdf_path: Path) -> str:
-        return hashlib.md5(pdf_path.read_bytes()).hexdigest()
+    def _cache_path(self, p: Path) -> Path:
+        return self.processed_dir / (p.stem + ".json")
 
-    def _cache_path(self, pdf_path: Path) -> Path:
-        return self.processed_dir / (pdf_path.stem + ".json")
-
-    def _load_cache(self, pdf_path: Path) -> list[StructuredChunk] | None:
-        cache = self._cache_path(pdf_path)
+    def _load_cache(self, p: Path) -> list[StructuredChunk] | None:
+        cache = self._cache_path(p)
         if not cache.exists():
             return None
         try:
             data = json.loads(cache.read_text(encoding="utf-8"))
-            if data.get("file_hash") != self._file_hash(pdf_path):
-                return None   # file changed — invalidate
+            if data.get("file_hash") != self._file_hash(p):
+                return None
             return [StructuredChunk(**c) for c in data["chunks"]]
         except Exception as e:
-            logger.warning("[PDFPipeline] Cache load failed: %s", e)
+            logger.warning("[PDFPipeline] Cache load error: %s", e)
             return None
 
-    def _save_cache(self, pdf_path: Path, chunks: list[StructuredChunk]) -> None:
-        cache = self._cache_path(pdf_path)
-        data  = {
-            "file_hash": self._file_hash(pdf_path),
-            "source":    pdf_path.name,
-            "bank":      chunks[0].bank if chunks else "Unknown",
+    def _save_cache(self, p: Path, chunks: list[StructuredChunk]) -> None:
+        data = {
+            "file_hash":   self._file_hash(p),
+            "source":      p.name,
+            "bank":        chunks[0].bank if chunks else "Unknown",
             "chunk_count": len(chunks),
-            "chunks":    [c.to_dict() for c in chunks],
+            "chunks":      [c.to_dict() for c in chunks],
         }
-        cache.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        logger.info("[PDFPipeline] Saved %d chunks → %s", len(chunks), cache.name)
-
-    # ── Main entry point ───────────────────────────────────────────────────
+        self._cache_path(p).write_text(
+            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        logger.info("[PDFPipeline] Cached %d chunks → %s", len(chunks), p.stem + ".json")
 
     def process(self, pdf_path: str | Path) -> list[StructuredChunk]:
-        """
-        Process a single PDF file → list of StructuredChunk objects.
-
-        Checks cache first. Falls back to pdfplumber if NVIDIA API unavailable.
-        """
         pdf_path = Path(pdf_path)
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
-        # ── Cache check ───────────────────────────────────────────────────
         cached = self._load_cache(pdf_path)
         if cached:
             logger.info("[PDFPipeline] Cache hit: %s (%d chunks)", pdf_path.name, len(cached))
             return cached
 
-        # ── Detect bank from filename ──────────────────────────────────────
-        bank = detect_bank(pdf_path.name)
-
-        # ── Route to NVIDIA or fallback ────────────────────────────────────
-        if self.use_nvidia and self.api_key:
-            chunks = self._process_nvidia(pdf_path, bank)
-        else:
-            if self.use_nvidia and not self.api_key:
-                logger.warning(
-                    "[PDFPipeline] USE_NVIDIA_PDF=true but NVIDIA_API_KEY not set — using fallback"
-                )
-            chunks = _fallback_extract(pdf_path, bank)
+        bank   = detect_bank(pdf_path.name)
+        chunks = self._process_nvidia(pdf_path, bank) if (self.use_nvidia and self.api_key) else []
 
         if not chunks:
-            logger.warning("[PDFPipeline] No chunks extracted from %s", pdf_path.name)
-            return []
+            if self.use_nvidia and self.api_key:
+                logger.info("[PDFPipeline] NVIDIA produced 0 chunks — full pdfplumber fallback")
+            chunks = _fallback_extract(pdf_path, bank)
 
-        # Re-number chunk IDs sequentially
         for i, c in enumerate(chunks):
             c.chunk_id = i
 
-        self._save_cache(pdf_path, chunks)
+        if chunks:
+            self._save_cache(pdf_path, chunks)
+        else:
+            logger.warning("[PDFPipeline] No chunks extracted from %s", pdf_path.name)
+
         return chunks
 
     def _process_nvidia(self, pdf_path: Path, bank: str) -> list[StructuredChunk]:
         """
-        Call NVIDIA Page Elements API and convert response to structured chunks.
-        Falls back to pdfplumber only on real failures (not request format errors,
-        which are surfaced immediately so the caller can fix config).
+        Run the multi-model page-level pipeline.
+        Returns all chunks (including pdfplumber gap-fill for failed pages).
+        Falls back entirely to pdfplumber on FileSizeError or auth errors.
         """
         try:
-            raw_pages = _call_page_elements_api(
-                pdf_path,                        # pass Path, not bytes
-                api_key=self.api_key,
+            raw_pages, failed_indices = _call_page_elements_api(
+                pdf_path, self.api_key,
                 max_retries=self._max_retries,
                 retry_delay=self._retry_delay,
             )
+        except FileSizeError as e:
+            logger.info("[PDFPipeline] %s — using pdfplumber", e)
+            return []
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response is not None else 0
             if status in (401, 403):
-                # Auth failures — don't fall back silently, raise so the user knows
                 raise RuntimeError(
-                    f"NVIDIA API authentication failed (HTTP {status}). "
-                    f"Check NVIDIA_API_KEY in your .env file."
+                    f"NVIDIA API auth failed (HTTP {status}). Check NVIDIA_API_KEY."
                 ) from e
-            # 422 / 400 / other client errors — fall back with clear warning
-            logger.warning(
-                "[PDFPipeline] NVIDIA API request error (HTTP %d) for %s: %s "
-                "— falling back to pdfplumber. Check pdf_pipeline.py if this persists.",
-                status, pdf_path.name, e,
-            )
-            return _fallback_extract(pdf_path, bank)
+            logger.warning("[PDFPipeline] HTTP %d — pdfplumber fallback: %s", status, e)
+            return []
         except Exception as e:
-            logger.warning(
-                "[PDFPipeline] NVIDIA API failed for %s: %s — falling back to pdfplumber",
-                pdf_path.name, e,
+            logger.warning("[PDFPipeline] NVIDIA pipeline error — pdfplumber fallback: %s", e)
+            return []
+
+        # ── Convert API results to chunks ─────────────────────────────────
+        all_chunks: list[StructuredChunk] = []
+
+        for page_dict in raw_pages:
+            elements   = page_dict.get("elements", [])
+            model_used = page_dict.get("model", "page_elements")
+
+            # Improve bank detection from actual page content
+            if bank == "Unknown":
+                sample = " ".join(
+                    str(e.get("content", ""))[:150]
+                    for e in elements[:8]
+                    if e.get("type") in ("text", "title")
+                )
+                bank = detect_bank(pdf_path.name, sample)
+
+            page_chunks = _chunk_elements(
+                elements, bank, pdf_path.name,
+                model_source=model_used,
+                section_max_words=self._section_max,
+                table_max_words=self._table_max,
             )
-            return _fallback_extract(pdf_path, bank)
+            all_chunks.extend(page_chunks)
 
-        elements = _normalise_elements(raw_pages)
-        logger.info("[PDFPipeline] %s: %d elements across %d pages",
-                    pdf_path.name, len(elements), len(raw_pages))
+        # ── Gap-fill: pdfplumber for pages that NVIDIA couldn't process ───
+        if failed_indices:
+            logger.info(
+                "[PDFPipeline] Gap-fill: pdfplumber for %d failed page(s): %s",
+                len(failed_indices), [i + 1 for i in failed_indices],
+            )
+            gap_chunks = _fallback_extract(pdf_path, bank, failed_page_indices=failed_indices)
+            all_chunks.extend(gap_chunks)
 
-        # Detect bank from content if filename alone wasn't enough
-        text_sample = " ".join(
-            str(e.get("content", ""))[:200]
-            for e in elements[:10]
-            if e.get("type") in ("text", "title")
+        # Summary
+        model_counts: dict[str, int] = {}
+        for c in all_chunks:
+            model_counts[c.model_source] = model_counts.get(c.model_source, 0) + 1
+        logger.info(
+            "[PDFPipeline] %s — %d total chunks  model_sources=%s",
+            pdf_path.name, len(all_chunks), model_counts,
         )
-        if bank == "Unknown":
-            bank = detect_bank(pdf_path.name, text_sample)
+        return all_chunks
 
-        return _chunk_elements(
-            elements, bank, pdf_path.name,
-            section_max_words=self._section_max,
-            table_max_words=self._table_max,
-        )
 
 
 # ---------------------------------------------------------------------------
-# Module-level convenience function
+# Backward-compat alias (used by tests and external code)
+# ---------------------------------------------------------------------------
+
+def _normalise_elements(raw_pages: list[dict]) -> list[dict]:
+    """
+    Flatten a list of page dicts into a single element list.
+    Kept for backward compatibility — new code uses _chunk_elements directly.
+    """
+    elements: list[dict] = []
+    for page_data in raw_pages:
+        pn = page_data.get("page", 0)
+        for elem in page_data.get("elements", []):
+            elements.append({
+                "type":    elem.get("type", "text"),
+                "content": elem.get("content", ""),
+                "page":    pn,
+                "bbox":    elem.get("bbox", []),
+            })
+    return elements
+
+# ---------------------------------------------------------------------------
+# Public convenience functions
 # ---------------------------------------------------------------------------
 
 def process_pdf(file_path: str) -> list[dict]:
-    """
-    Public API — process a single PDF and return list of chunk dicts.
-
-    Example:
-        chunks = process_pdf("data/hdfc_pdfs/hdfc_personal_loan.pdf")
-        for c in chunks:
-            print(c["bank"], c["doc_type"], c["text"][:80])
-    """
-    pipeline = PDFPipeline()
-    chunks   = pipeline.process(file_path)
-    return [c.to_dict() for c in chunks]
+    """Process a single PDF and return list of chunk dicts."""
+    return [c.to_dict() for c in PDFPipeline().process(file_path)]
 
 
 def test_single_pdf(file_path: str, api_key: str | None = None) -> None:
     """
-    Quick smoke-test: process one PDF and print a summary.
-    Run from project root:
-        python -c "from pdf_pipeline import test_single_pdf; test_single_pdf('data/hdfc_pdfs/hdfc_personal_loan.pdf')"
+    Smoke-test a single PDF through the full pipeline.
 
-    Args:
-        file_path : path to any .pdf file
-        api_key   : NVIDIA API key (reads NVIDIA_API_KEY from .env if not supplied)
+    python -c "from pdf_pipeline import test_single_pdf; \
+               test_single_pdf('data/hdfc_pdfs/hdfc_personal_loan.pdf')"
     """
     import os
-    from pathlib import Path
-
     key = api_key or os.getenv("NVIDIA_API_KEY", "")
 
-    print(f"[test_single_pdf] File:        {file_path}")
-    print(f"[test_single_pdf] API key set: {bool(key)}")
-    print(f"[test_single_pdf] USE_NVIDIA:  {os.getenv('USE_NVIDIA_PDF', 'false')}")
+    print(f"[test_single_pdf] File:         {file_path}")
+    print(f"[test_single_pdf] API key set:  {bool(key)}")
+    print(f"[test_single_pdf] USE_NVIDIA:   {os.getenv('USE_NVIDIA_PDF', 'false')}")
+    size_mb = Path(file_path).stat().st_size / 1024 / 1024 if Path(file_path).exists() else 0
+    print(f"[test_single_pdf] File size:    {size_mb:.2f} MB (limit 5 MB)")
     print()
 
-    # Direct API test (bypasses cache and pipeline logic)
-    if key:
-        print("[test_single_pdf] Testing raw NVIDIA API call…")
+    if key and size_mb <= 5:
+        print("[test_single_pdf] Converting page 1 to PNG (PyMuPDF)…")
         try:
-            pages = _call_page_elements_api(
-                Path(file_path),
-                api_key=key,
-                max_retries=1,    # single attempt for quick smoke test
-                retry_delay=1.0,
+            images = pdf_to_images(Path(file_path), dpi=_DPI_HIGH)
+            print(f"[test_single_pdf] {len(images)} page(s) converted")
+
+            p1_num, p1_png = images[0]
+            b64_len = len(_image_to_b64(p1_png))
+            print(f"[test_single_pdf] p1 PNG size: {len(p1_png)/1024:.1f} KB  "
+                  f"b64: {b64_len/1024:.1f} KB  limit: {_MAX_B64_BYTES/1024:.0f} KB  "
+                  f"ok={'YES' if b64_len < _MAX_B64_BYTES else 'COMPRESSED'}")
+
+            result = _process_single_page(
+                p1_png, p1_num, Path(file_path).name,
+                key, max_retries=1, retry_delay=1.0,
             )
-            type_counts: dict[str, int] = {}
-            for p in pages:
-                for e in p.get("elements", []):
+            if result.success:
+                type_counts: dict[str, int] = {}
+                for e in result.elements:
                     t = e.get("type", "?")
                     type_counts[t] = type_counts.get(t, 0) + 1
-            print(f"[test_single_pdf] SUCCESS — pages={len(pages)}, elements={type_counts}")
-
-            # Show first 3 elements
-            print("[test_single_pdf] First elements:")
-            for p in pages[:2]:
-                for e in p.get("elements", [])[:3]:
-                    preview = str(e.get("content", ""))[:80]
-                    print(f"  [{e.get('type')}] {preview}")
-
+                print(f"[test_single_pdf] p1 SUCCESS  model={result.model_used}  types={type_counts}")
+            else:
+                print("[test_single_pdf] p1 FAILED — both page_elements and OCR exhausted")
+        except ImportError:
+            print("[test_single_pdf] PyMuPDF not installed. Run: pip install pymupdf")
         except Exception as e:
-            print(f"[test_single_pdf] FAILED: {e}")
+            print(f"[test_single_pdf] Error during page-level test: {e}")
     else:
-        print("[test_single_pdf] Skipping raw API test — NVIDIA_API_KEY not set")
+        if size_mb > 5:
+            print(f"[test_single_pdf] Skipping NVIDIA test — file too large ({size_mb:.1f} MB)")
+        else:
+            print("[test_single_pdf] Skipping NVIDIA test — NVIDIA_API_KEY not set")
 
     print()
-    print("[test_single_pdf] Running full pipeline (with fallback)…")
+    print("[test_single_pdf] Running full pipeline…")
     pipeline = PDFPipeline(api_key=key or None)
-    chunks = pipeline.process(file_path)
+    chunks   = pipeline.process(file_path)
     print(f"[test_single_pdf] Total chunks: {len(chunks)}")
     if chunks:
         type_counts2: dict[str, int] = {}
+        model_counts: dict[str, int] = {}
         for c in chunks:
-            type_counts2[c.doc_type] = type_counts2.get(c.doc_type, 0) + 1
-        print(f"[test_single_pdf] Chunk types: {type_counts2}")
-        print(f"[test_single_pdf] Bank:        {chunks[0].bank}")
-        print(f"[test_single_pdf] Sample chunk:")
-        print(f"  [{chunks[0].doc_type}] {chunks[0].text[:120]}")
+            type_counts2[c.doc_type]     = type_counts2.get(c.doc_type, 0) + 1
+            model_counts[c.model_source] = model_counts.get(c.model_source, 0) + 1
+        print(f"[test_single_pdf] Chunk types:    {type_counts2}")
+        print(f"[test_single_pdf] Model sources:  {model_counts}")
+        print(f"[test_single_pdf] Bank:           {chunks[0].bank}")
+        print(f"[test_single_pdf] Sample:")
+        print(f"  [{chunks[0].doc_type}|{chunks[0].model_source}] {chunks[0].text[:120]}")

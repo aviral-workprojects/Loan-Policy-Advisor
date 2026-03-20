@@ -16,7 +16,8 @@
       "element_type": "text",
       "field_hint": "",
       "structured_data": {},
-      "content_hash": "10b2651f2112"
+      "content_hash": "10b2651f2112",
+      "model_source": "pdfplumber"
     },
     {
       "text": "Further, this Scheme cannot be used in conjunction with any other discounts and promotions of Axis Bank. The Scheme is subject to all such laws, rules and regulations as may be applicable in any jurisdiction in India from time to time and where prohibited the same shall not be available. Any images shown on email or on the Website, or on any other advertisement material whatsoever, are for representational purpose only. This Scheme is not applicable to Axis Bank employees and/or their relatives. Axis Bank, its group entities/ affiliates or their respective directors, officers, employees, agents, vendors, etc., shall not be liable for any loss or damage whatsoever that may be suffered, or for any personal injury that may be suffered by a Customer, directly or indirectly, by use or non-use of products/ services under this Scheme. The Scheme is not transferable, non-assignable, non-negotiable and cannot be encashed under any circumstances. All rights, title and interest including but not limited to the intellectual property rights in the promotional material(s) shall vest solely and exclusively with Axis Bank at all times and Axis Bank shall be entitled to use the database of the entries received or any information in any media for future promotional, marketing and publicity purpose without any further reference or payment or compensation to the participating Customers. Any disputes arising out of this Scheme shall be subject to the exclusive jurisdiction of competent courts in Mumbai. The existence of a dispute, if any, shall not constitute a claim against Axis Bank.",
@@ -30,7 +31,8 @@
       "element_type": "text",
       "field_hint": "",
       "structured_data": {},
-      "content_hash": "3302fef95b00"
+      "content_hash": "3302fef95b00",
+      "model_source": "pdfplumber"
     }
   ]
 }
