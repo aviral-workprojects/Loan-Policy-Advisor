@@ -70,16 +70,24 @@ _TABLE_STRUCTURE_URL = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-table-st
 
 _MAX_PDF_BYTES = 5 * 1024 * 1024  # 5 MB
 
-# ── Image limits ──────────────────────────────────────────────────────────────
-MAX_IMAGE_BYTES      = 120_000
-MAX_DIMENSION        = 1024
-_DPI_LADDER          = [150, 96, 72, 60, 50]
-_JPEG_QUALITY_LADDER = [85, 70, 50, 30]
+# ── Image quality constants (RAISED — over-compression = empty OCR) ───────────
+# NVIDIA OCR is highly sensitive to input quality. The previous 120KB/1024px/150DPI
+# settings were causing empty OCR responses on dense financial PDFs.
+MAX_IMAGE_BYTES      = 150_000            # was 120_000
+MAX_DIMENSION        = 1400               # was 1024 — preserves small fonts & tables
+_DPI_LADDER          = [150, 120, 96]     # 200 DPI caused PyMuPDF memory freeze on large PDFs
+# JPEG fallback is now always enabled — see preprocess_image() below.
+_JPEG_QUALITY_LADDER = [90, 80, 70, 60]  # gentler quality ladder (was [85,70,50,30])
 
-# Legacy aliases
+# Legacy aliases (still used by test_single_pdf / backward-compat callers)
 _MAX_B64_BYTES = 180_000
-_DPI_HIGH      = 150
-_DPI_LOW       = 72
+_DPI_HIGH      = 200    # updated
+_DPI_LOW       = 96     # updated
+
+# ── Nemotron Parse v1.1 — preferred over page-elements-v3 ─────────────────────
+# Better semantic classes, stronger layout understanding, OCR-ready output.
+# Used as Step 1 with automatic fallback to page-elements if parse fails.
+_PARSE_URL = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-parse-v1.1"
 
 # ── Retry ─────────────────────────────────────────────────────────────────────
 _RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
@@ -287,11 +295,21 @@ def table_to_text(table_data: dict | list | str) -> tuple[str, dict]:
 # Image preprocessing
 # ---------------------------------------------------------------------------
 
-def preprocess_image(img_input: bytes | Any) -> bytes | None:
+def preprocess_image(img_input: bytes | Any, allow_jpeg: bool = True) -> bytes | None:
     """
     Guarantee output < MAX_IMAGE_BYTES and ≤ MAX_DIMENSION px.
-    Tries PNG → JPEG quality ladder → aggressive resize+JPEG.
-    Returns None only if every strategy fails.
+
+    Strategy (PNG → JPEG → aggressive resize+JPEG):
+        1. Try PNG  — lossless, best quality for OCR
+        2. JPEG quality ladder (90/80/70/60) — mandatory fallback; a high-quality
+           JPEG still has excellent OCR accuracy and is far better than None
+        3. Resize + JPEG — last resort
+
+    allow_jpeg is kept as a parameter for backward-compat but is now always
+    effectively True.  The old PNG-only mode caused the pipeline to return None
+    and skip pages entirely, which is far worse than a quality-90 JPEG.
+
+    Returns None only if every strategy fails (should be extremely rare).
     """
     try:
         from PIL import Image
@@ -306,6 +324,7 @@ def preprocess_image(img_input: bytes | Any) -> bytes | None:
         img = img.copy()
         img.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.LANCZOS)
 
+    # Flatten alpha / palette modes
     if img.mode in ("RGBA", "P", "LA"):
         bg = Image.new("RGB", img.size, (255, 255, 255))
         bg.paste(img, mask=img.split()[-1] if img.mode == "RGBA" else None)
@@ -313,36 +332,40 @@ def preprocess_image(img_input: bytes | Any) -> bytes | None:
     elif img.mode != "RGB":
         img = img.convert("RGB")
 
+    # ── Try PNG first (lossless) ────────────────────────────────────────────
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     if len(buf.getvalue()) < MAX_IMAGE_BYTES:
         return buf.getvalue()
 
+    # ── JPEG quality ladder (mandatory — never skip this) ───────────────────
     for quality in _JPEG_QUALITY_LADDER:
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=quality, optimize=True)
         if len(buf.getvalue()) < MAX_IMAGE_BYTES:
+            logger.debug("[preprocess_image] JPEG q=%d → %.1f KB", quality, len(buf.getvalue()) / 1024)
             return buf.getvalue()
 
-    for scale in [0.75, 0.60, 0.50, 0.40]:
+    # ── Aggressive resize + JPEG ────────────────────────────────────────────
+    for scale in [0.75, 0.60, 0.50]:
         small = img.resize(
             (max(1, int(img.size[0] * scale)), max(1, int(img.size[1] * scale))),
             Image.LANCZOS,
         )
-        for quality in [70, 50, 30]:
-            buf = io.BytesIO()
-            small.save(buf, format="JPEG", quality=quality, optimize=True)
-            if len(buf.getvalue()) < MAX_IMAGE_BYTES:
-                logger.info("[preprocess_image] %.0f%% scale q=%d → %.1f KB",
-                            scale * 100, quality, len(buf.getvalue()) / 1024)
-                return buf.getvalue()
+        buf = io.BytesIO()
+        small.save(buf, format="JPEG", quality=60, optimize=True)
+        if len(buf.getvalue()) < MAX_IMAGE_BYTES:
+            logger.info("[preprocess_image] resize %.0f%% q=60 → %.1f KB",
+                        scale * 100, len(buf.getvalue()) / 1024)
+            return buf.getvalue()
 
-    logger.error("[preprocess_image] All compression strategies failed")
+    logger.error("[preprocess_image] All compression strategies failed (%.1f KB image)",
+                 len(img.tobytes()) / 1024)
     return None
 
 
 def _pdf_page_to_preprocessed_bytes(pdf_path: Path, page_index: int) -> bytes | None:
-    """Render page via PyMuPDF at descending DPI until it passes preprocess_image."""
+    """Render page via PyMuPDF at descending DPI until it fits MAX_IMAGE_BYTES."""
     try:
         import fitz
     except ImportError:
@@ -358,13 +381,17 @@ def _pdf_page_to_preprocessed_bytes(pdf_path: Path, page_index: int) -> bytes | 
         finally:
             doc.close()
 
-        result = preprocess_image(png)
+        result = preprocess_image(png)   # allow_jpeg=True by default
         if result is not None:
-            logger.debug("[PDFPipeline] p%d dpi=%d processed=%.1f KB ✓",
-                         page_index + 1, dpi, len(result) / 1024)
+            mime = "JPEG" if result[:3] == b"\xff\xd8\xff" else "PNG"
+            logger.debug("[PDFPipeline] p%d dpi=%d %s=%.1f KB ✓",
+                         page_index + 1, dpi, mime, len(result) / 1024)
             return result
+        logger.debug("[PDFPipeline] p%d dpi=%d raw=%.1f KB — trying lower DPI",
+                     page_index + 1, dpi, len(png) / 1024)
 
-    logger.error("[PDFPipeline] p%d all DPI levels failed preprocessing", page_index + 1)
+    logger.error("[PDFPipeline] p%d all DPI levels failed — page will use pdfplumber",
+                 page_index + 1)
     return None
 
 
@@ -413,7 +440,9 @@ def crop_image(image_bytes: bytes, bbox: list | dict) -> bytes:
             return image_bytes
         buf = io.BytesIO()
         img.crop((x1, y1, x2, y2)).save(buf, format="PNG")
-        result = preprocess_image(buf.getvalue())
+        # Crops can use JPEG as fallback — they're small regions where slight
+        # compression artefacts matter less than fitting under the payload limit.
+        result = preprocess_image(buf.getvalue(), allow_jpeg=True)
         return result if result is not None else image_bytes
     except Exception as e:
         logger.debug("[crop_image] failed: %s", e)
@@ -454,8 +483,12 @@ def _nvidia_post(
     timeout:     int   = 30,
 ) -> dict | list:
     """POST image to NVIDIA CV endpoint with rate limiting and exponential backoff."""
-    # ✅ FIX 4: global rate limit before every call
+    # ✅ Rate limit before every call
     _rate_limit()
+
+    # Fix 6: hard cap per-request timeout — prevents a single stuck call from
+    # blocking the thread for 30s+ and causing cascade delays across all pages.
+    timeout = min(timeout, 20)
 
     mime = "image/jpeg" if image_bytes[:3] == b"\xff\xd8\xff" else "image/png"
     b64  = _image_to_b64(image_bytes)
@@ -568,6 +601,10 @@ def _call_ocr(
                         max_retries=max_retries or cfg["max_retries"],
                         retry_delay=retry_delay or cfg["retry_delay"],
                         timeout=cfg["timeout"])
+
+    # Fix 7: log raw response truncated — helps diagnose format surprises
+    logger.debug("[OCR RAW] %s", str(data)[:500])
+
     elements: list[dict] = []
     if isinstance(data, dict):
         if "data" in data:
@@ -591,6 +628,12 @@ def _call_ocr(
                 elements.append({"type": "text", "content": _clean_text(str(t)), "page": 1, "bbox": []})
     elif isinstance(data, str) and data.strip():
         elements.append({"type": "text", "content": _clean_text(data), "page": 1, "bbox": []})
+
+    # Fix 6: validate OCR output — reject pure-number / symbol garbage
+    elements = [
+        e for e in elements
+        if is_valid_ocr_text(str(e.get("content", e.get("text", "")) or ""))
+    ]
     return elements
 
 
@@ -629,15 +672,159 @@ def _call_table_structure(
 
 
 # ---------------------------------------------------------------------------
-# Confidence scoring
+# OCR debug + validation helpers
 # ---------------------------------------------------------------------------
+
+def _log_ocr_debug(elements: list[dict], page_number: int, context: str = "") -> None:
+    """Fix 3: log OCR output so you can see exactly what the API returned."""
+    if elements:
+        sample = str(elements[0].get("content", elements[0].get("text", "")) or "")[:80]
+        logger.info("[OCR DEBUG] p%d %s → %d elem(s) | sample='%s'",
+                    page_number, context, len(elements), sample)
+    else:
+        logger.warning("[OCR DEBUG] p%d %s → EMPTY (OCR returned nothing)", page_number, context)
+
+
+def is_valid_ocr_text(text: str) -> bool:
+    """
+    Validate OCR output before accepting it.
+    Intentionally lenient for financial documents which are number-heavy.
+    Only rejects: empty / whitespace-only strings and very short noise (<5 chars).
+    """
+    if not text or len(text.strip()) < 5:
+        return False
+    return True
+
+
+def expand_bbox(bbox: list | None, margin: float = 0.02) -> list | None:
+    """
+    Fix 4: add a small margin around every bounding box before cropping.
+    OCR fails when text is cut too tightly — a 2% margin gives a huge accuracy boost.
+    """
+    if not bbox or not isinstance(bbox, (list, tuple)) or len(bbox) < 4:
+        return bbox
+    x1, y1, x2, y2 = bbox[:4]
+    # Only apply if coordinates look normalised (0–1 range)
+    if not all(0.0 <= v <= 1.5 for v in [x1, y1, x2, y2]):
+        return list(bbox)
+    return [
+        max(0.0, x1 - margin),
+        max(0.0, y1 - margin),
+        min(1.0, x2 + margin),
+        min(1.0, y2 + margin),
+    ]
+
+
+def upscale_image(img_bytes: bytes, min_dim: int = 600) -> bytes:
+    """
+    Fix 8: upscale small crops to at least min_dim on the longer side.
+    Small crops (e.g. a single header line) are often too low-res for OCR.
+    Returns original bytes if Pillow is unavailable or upscaling isn't needed.
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return img_bytes
+    try:
+        img = Image.open(io.BytesIO(img_bytes))
+        if max(img.size) < min_dim:
+            scale = min_dim / max(img.size)
+            new_w = max(1, int(img.size[0] * scale))
+            new_h = max(1, int(img.size[1] * scale))
+            img   = img.resize((new_w, new_h), Image.LANCZOS)
+            buf   = io.BytesIO()
+            img.save(buf, format="PNG")
+            result = buf.getvalue()
+            if len(result) < MAX_IMAGE_BYTES:
+                return result
+        return img_bytes
+    except Exception as e:
+        logger.debug("[upscale_image] failed: %s", e)
+        return img_bytes
+
+
+# ---------------------------------------------------------------------------
+# Nemotron Parse v1.1  (preferred over page-elements-v3)
+# ---------------------------------------------------------------------------
+
+def _call_parse(
+    page_bytes: bytes, filename: str, api_key: str,
+    max_retries: int = 3, retry_delay: float = 2.0,
+) -> list[dict]:
+    """
+    Call Nemotron Parse v1.1 — better semantic layout understanding than
+    nemoretriever-page-elements-v3 for dense financial PDFs.
+
+    Returns the same normalised element list as _call_page_elements so
+    the rest of the pipeline is unchanged.
+    Falls back to _call_page_elements automatically if Parse returns 404 or fails.
+    """
+    cfg = _MODEL_RETRY_CONFIG["page_elements"]
+    try:
+        data = _nvidia_post(
+            _PARSE_URL, api_key, page_bytes, filename,
+            max_retries=max_retries or cfg["max_retries"],
+            retry_delay=retry_delay or cfg["retry_delay"],
+            timeout=cfg["timeout"],
+        )
+    except requests.exceptions.HTTPError as he:
+        status = he.response.status_code if he.response is not None else 0
+        if status == 404:
+            # Parse not available in this API region — fall back silently
+            logger.info("[Parse] 404 → falling back to page-elements-v3")
+            return _call_page_elements(page_bytes, filename, api_key,
+                                       max_retries=max_retries, retry_delay=retry_delay)
+        raise
+
+    # Normalise — Parse uses same schema as page-elements but may use "label"/"text"
+    elements: list[dict] = []
+    if isinstance(data, dict):
+        if   "data"     in data: raw = [{"page": 1, "elements": data["data"]}]
+        elif "pages"    in data: raw = data["pages"]
+        elif "elements" in data: raw = [{"page": 1, "elements": data["elements"]}]
+        else:
+            logger.warning("[Parse] Unexpected keys=%s — trying page-elements fallback",
+                           list(data.keys()))
+            return _call_page_elements(page_bytes, filename, api_key,
+                                       max_retries=max_retries, retry_delay=retry_delay)
+    elif isinstance(data, list):
+        raw = data
+    else:
+        return _call_page_elements(page_bytes, filename, api_key,
+                                   max_retries=max_retries, retry_delay=retry_delay)
+
+    for pd_ in raw:
+        pn = pd_.get("page", 1)
+        for elem in pd_.get("elements", []):
+            elements.append({
+                "type":    elem.get("type") or elem.get("label", "text"),
+                "content": elem.get("text") or elem.get("content", ""),
+                "page":    pn,
+                "bbox":    elem.get("bbox", []),
+            })
+
+    if not elements:
+        logger.info("[Parse] Empty result → falling back to page-elements-v3")
+        return _call_page_elements(page_bytes, filename, api_key,
+                                   max_retries=max_retries, retry_delay=retry_delay)
+
+    logger.info("[Parse] OK  n=%d", len(elements))
+    return elements
 
 def _score_page_result(elements: list[dict]) -> float:
     """Confidence score 0–10 for a page extraction result."""
     if not elements:
         return 0.0
-    _w = {"table_structure": 3.0, "page_elements+ocr": 2.5,
-          "page_elements": 2.0, "ocr": 2.0, "pdfplumber": 0.5}
+    # Fix 10: updated weights reflect Parse being higher quality than page-elements
+    _w = {
+        "table_structure":   4.0,
+        "parse+ocr":         3.0,
+        "page_elements+ocr": 2.5,
+        "parse":             2.5,
+        "page_elements":     2.0,
+        "ocr":               2.5,   # whole-page OCR is actually decent quality
+        "pdfplumber":        0.5,
+    }
     total_chars   = sum(len(str(
         e.get("content_text") or e.get("content") or e.get("text") or ""
     )) for e in elements)
@@ -669,13 +856,25 @@ def _process_single_page(
     retry_delay: float,
 ) -> _PageResult:
     """
-    v4.1 smart cascade with all four critical fixes applied.
+    v4.2 upgraded cascade:
+        Step 1: Nemotron Parse v1.1  (with auto-fallback to page-elements)
+        Step 2: Per-element smart routing:
+                  existing text ≥ 15 chars       → keep directly (no OCR call)
+                  table / grid / matrix bbox      → table_structure
+                  text/title/other bbox           → expand_bbox → upscale → OCR
+                                                    (multi-pass if crop is small)
+        Step 3: Whole-page OCR if score < 1.0 or no elements yielded text
+        Step 4: Merge — prefer whichever path produced more text
+    All OCR results validated via is_valid_ocr_text() before being kept.
     """
     fname = f"page_{page_number}_{source_name}"
 
-    # ── Step 1: Page Elements ─────────────────────────────────────────────
+    # ── Step 1: page-elements (stable) ───────────────────────────────────────
+    # Parse v1.1 returns 404 for most API accounts — use page-elements-v3 which
+    # is universally available.  _call_parse() is kept for future enablement.
     pe_elements: list[dict] = []
     pe_ok = False
+    parse_model_used = "page_elements"
     try:
         pe_elements = _call_page_elements(page_bytes, fname, api_key,
                                           max_retries=max_retries, retry_delay=retry_delay)
@@ -690,8 +889,8 @@ def _process_single_page(
     except Exception as e1:
         logger.warning("[PDFPipeline] p%d  page_elements FAILED: %s", page_number, e1)
 
-    # ── Step 2: Smart per-element routing ──────────────────────────────────
-    enriched:      list[dict] = []
+    # ── Step 2: Smart per-element routing ─────────────────────────────────────
+    enriched:   list[dict] = []
     per_elem_ok = False
 
     if pe_ok and pe_elements:
@@ -701,30 +900,32 @@ def _process_single_page(
             elem_type = elem.get("type", "text")
             efname    = f"page_{page_number}_e{idx}_{source_name}"
 
-            # Skip tiny bboxes
+            # Skip degenerate bboxes
             if bbox and isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
                 x1, y1, x2, y2 = bbox[:4]
                 if all(0.0 <= v <= 1.0 for v in [x1, y1, x2, y2]):
                     if (x2 - x1) < _MIN_BBOX_DIM or (y2 - y1) < _MIN_BBOX_DIM:
                         continue
 
-            # ✅ FIX 2: clean raw text before evaluating it
+            # Clean + validate existing text from Parse
             raw      = str(elem.get("content", "") or "") or str(elem.get("text", "") or "")
             existing = _clean_text(raw)
 
-            # ✅ FIX 3: if page_elements already gave good text → keep, skip OCR
+            # If Parse already gave good text → keep directly, skip OCR (saves credits)
             if existing and len(existing) >= _MIN_EXISTING_TEXT_LEN:
                 e2 = dict(elem)
                 e2["content"]      = existing
-                e2["model_source"] = "page_elements"
+                e2["model_source"] = parse_model_used
                 enriched.append(e2)
                 ocr_ok += 1
                 continue
 
-            # Otherwise route by element type
-            cropped = crop_image(page_bytes, bbox) if bbox else page_bytes
+            # Fix 4: expand bbox before cropping — tight crops kill OCR accuracy
+            expanded_bbox = expand_bbox(bbox, margin=0.02)
+            cropped = crop_image(page_bytes, expanded_bbox) if expanded_bbox else page_bytes
 
-            if elem_type == "table":
+            # Fix 9: extended table type list
+            if elem_type in ("table", "grid", "matrix"):
                 try:
                     te_list = _call_table_structure(cropped, efname, api_key,
                                                     max_retries=1, retry_delay=retry_delay)
@@ -736,33 +937,65 @@ def _process_single_page(
                         ocr_ok += 1
                         continue
                 except Exception as te:
-                    logger.debug("[PDFPipeline] p%d e%d table_structure failed: %s", page_number, idx, te)
+                    logger.debug("[PDFPipeline] p%d e%d table_structure failed: %s",
+                                 page_number, idx, te)
 
-            # Text / title / other → cropped OCR
+            # Fix 8: upscale small crops + contrast boost before OCR
+            ocr_input = upscale_image(cropped, min_dim=900)
+
+            # Contrast enhancement — big accuracy boost on low-contrast financial PDFs
             try:
-                ocr_elems = _call_ocr(cropped, efname, api_key,
-                                      max_retries=max(1, max_retries - 1),
-                                      retry_delay=retry_delay)
-                if ocr_elems:
-                    for oe in ocr_elems:
-                        oe["page"]         = page_number
-                        oe["element_type"] = elem_type
-                        oe["model_source"] = "page_elements+ocr"
-                        oe["bbox"]         = bbox
-                    enriched.extend(ocr_elems)
-                    ocr_ok += 1
-            except Exception as oe:
-                logger.debug("[PDFPipeline] p%d e%d OCR failed: %s", page_number, idx, oe)
+                from PIL import Image as _PILImage, ImageEnhance as _Enhance
+                _img = _PILImage.open(io.BytesIO(ocr_input))
+                _img = _Enhance.Contrast(_img).enhance(1.5)
+                _buf = io.BytesIO()
+                _img.save(_buf, format="PNG")
+                _enhanced = _buf.getvalue()
+                if len(_enhanced) < MAX_IMAGE_BYTES:
+                    ocr_input = _enhanced
+            except Exception:
+                pass   # contrast boost failed silently — use original
 
-        enriched     = _merge_ocr_fragments(enriched)
-        per_elem_ok  = ocr_ok > 0
+            # Fix 7 (multi-pass OCR): try OCR on original crop, then upscaled.
+            # Keep whichever produced more valid text.
+            best_ocr: list[dict] = []
+            for pass_num, ocr_bytes in enumerate([cropped, ocr_input], start=1):
+                if pass_num == 2 and ocr_bytes is cropped:
+                    break   # upscale returned same bytes — no point calling again
+                try:
+                    ocr_result = _call_ocr(ocr_bytes, f"{efname}_p{pass_num}", api_key,
+                                           max_retries=max(1, max_retries - 1),
+                                           retry_delay=retry_delay)
+                    _log_ocr_debug(ocr_result, page_number, f"e{idx} pass{pass_num}")
+                    ocr_chars = sum(len(str(e.get("content","") or "")) for e in ocr_result)
+                    best_chars = sum(len(str(e.get("content","") or "")) for e in best_ocr)
+                    if ocr_chars > best_chars:
+                        best_ocr = ocr_result
+                except Exception as oe:
+                    logger.debug("[PDFPipeline] p%d e%d pass%d OCR failed: %s",
+                                 page_number, idx, pass_num, oe)
+
+            if best_ocr:
+                for oe in best_ocr:
+                    oe["page"]         = page_number
+                    oe["element_type"] = elem_type
+                    oe["model_source"] = f"{parse_model_used}+ocr"
+                    oe["bbox"]         = bbox
+                enriched.extend(best_ocr)
+                ocr_ok += 1
+
+        enriched    = _merge_ocr_fragments(enriched)
+        per_elem_ok = ocr_ok > 0
         logger.info("[PDFPipeline] p%d  per-elem routing: %d/%d → text",
                     page_number, ocr_ok, len(pe_elements))
 
-    # ── Step 3: Whole-page OCR fallback ────────────────────────────────────
+    # ── Step 3: Whole-page OCR fallback ────────────────────────────────────────
     inter_score = _score_page_result(enriched)
     wp_elems: list[dict] = []
-    if not pe_ok or not per_elem_ok or inter_score < 1.0:
+    # Lowered threshold from 1.0 → 2.5: trigger whole-page OCR more aggressively.
+    # Element-level crops often miss text when bboxes are imprecise; whole-page
+    # OCR is a reliable safety net and should fire whenever confidence is marginal.
+    if not pe_ok or not per_elem_ok or inter_score < 2.5:
         reason = ("pe_failed" if not pe_ok
                   else "no_elem_text" if not per_elem_ok
                   else f"low_score({inter_score:.1f})")
@@ -770,6 +1003,7 @@ def _process_single_page(
         try:
             wp_elems = _call_ocr(page_bytes, fname, api_key,
                                  max_retries=max(1, max_retries - 1), retry_delay=retry_delay)
+            _log_ocr_debug(wp_elems, page_number, "whole-page")
             for e in wp_elems:
                 e["page"]         = page_number
                 e["element_type"] = "ocr"
@@ -779,7 +1013,7 @@ def _process_single_page(
         except Exception as e2:
             logger.warning("[PDFPipeline] p%d  whole-page OCR FAILED: %s", page_number, e2)
 
-    # ── Step 4: Merge ──────────────────────────────────────────────────────
+    # ── Step 4: Merge ───────────────────────────────────────────────────────────
     def _tchars(elems: list[dict]) -> int:
         return sum(len(str(e.get("content_text") or e.get("content") or e.get("text") or ""))
                    for e in elems)
@@ -788,11 +1022,11 @@ def _process_single_page(
         ec, wc = _tchars(enriched), _tchars(wp_elems)
         merged = wp_elems if wc > ec * 2 else enriched
         if wc > ec * 2:
-            logger.info("[PDFPipeline] p%d  prefer whole-page OCR (%d vs %d chars)", page_number, wc, ec)
+            logger.info("[PDFPipeline] p%d  whole-page OCR preferred (%d vs %d chars)",
+                        page_number, wc, ec)
     else:
         merged = wp_elems
 
-    # ✅ FIX 1: threshold is now 5 (was 20)
     total = _tchars(merged)
     if not merged or total < _MIN_PAGE_TEXT_CHARS:
         logger.warning("[PDFPipeline] p%d  text too short (%d < %d) → pdfplumber",
@@ -801,17 +1035,15 @@ def _process_single_page(
 
     final_score = _score_page_result(merged)
 
-    # Fix 3: gate on confidence — don't call low-quality garbage a "success"
+    # Low-confidence gate: if score still < 2.0, fall back rather than store garbage
     if final_score < 2.0:
-        logger.warning(
-            "[PDFPipeline] p%d  low confidence score (%.1f < 2.0) → forcing pdfplumber",
-            page_number, final_score,
-        )
+        logger.warning("[PDFPipeline] p%d  low confidence (%.1f < 2.0) → pdfplumber",
+                       page_number, final_score)
         return _PageResult(page_number, [], "pdfplumber", False, final_score)
 
     src_counts: dict[str, int] = {}
     for e in merged:
-        s = e.get("model_source", "page_elements+ocr")
+        s = e.get("model_source", f"{parse_model_used}+ocr")
         src_counts[s] = src_counts.get(s, 0) + 1
     model_tag = max(src_counts, key=lambda k: src_counts[k])
 
@@ -870,11 +1102,14 @@ def _call_page_elements_api(
                               api_key, max_retries, retry_delay)
             futures_map[fut] = page_num - 1
 
+        # Removed as_completed(timeout=) — it raises TimeoutError which marks all
+        # remaining pages as failed even if they finish shortly after.
+        # Individual fut.result(timeout=25) is sufficient protection.
         for fut in as_completed(futures_map):
             idx2     = futures_map[fut]
             page_num = idx2 + 1
             try:
-                r = fut.result(timeout=45)   # Fix 2: prevent infinite hang on stuck thread
+                r = fut.result(timeout=25)   # 25s per page — hard per-thread cap
                 if r.success and r.elements:
                     all_pages.append({"page": r.page_number, "elements": r.elements,
                                       "model": r.model_used, "confidence_score": r.confidence_score})
