@@ -1,33 +1,25 @@
 #!/usr/bin/env python3
 """
-scripts/process_all_pdfs.py  (v4)
-==================================
-Batch PDF processing script.
-
-v4 additions:
-    ✅ NVIDIA success signal — warns loudly when no NVIDIA model contributed
-    ✅ Model tracking        — per-file breakdown of model_source counts
-    ✅ Confidence scoring    — avg confidence score per file
-    ✅ Empty-chunk guard     — failed_count++ immediately on empty result
-    ✅ Consistent logging    — emoji-coded, matches pdf_pipeline.py v4 format
+scripts/process_all_pdfs.py  (v4.2)
+=====================================
+All previous features retained, plus:
+    ✅ Fix 9: True NVIDIA observability
+               — nvidia_success = non-pdfplumber chunks
+               — explicit ratio logged on every file
+               — global summary shows overall NVIDIA% across all files
+               — 🚨 warning fires when nvidia_success == 0
+               — ⚠️  warning fires when NVIDIA% < 50%
 
 Usage:
     python scripts/process_all_pdfs.py
-
-    # Force reprocess (ignores cache)
     python scripts/process_all_pdfs.py --force
-
-    # Process a single file
     python scripts/process_all_pdfs.py --file data/hdfc_pdfs/hdfc_personal_loan.pdf
-
-    # Dry run — show what would be processed
     python scripts/process_all_pdfs.py --dry-run
 """
 
 import sys
 import os
 import argparse
-import json
 import logging
 import time
 from pathlib import Path
@@ -43,7 +35,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Model sources that count as "NVIDIA succeeded"
+# Fix 9: model sources that count as "NVIDIA succeeded"
 _NVIDIA_SOURCES = {
     "page_elements",
     "ocr",
@@ -53,8 +45,11 @@ _NVIDIA_SOURCES = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def _count_model_sources(chunks) -> dict[str, int]:
-    """Count chunks per model_source."""
     counts: dict[str, int] = {}
     for c in chunks:
         src = getattr(c, "model_source", "unknown")
@@ -63,18 +58,40 @@ def _count_model_sources(chunks) -> dict[str, int]:
 
 
 def _nvidia_success_count(chunks) -> int:
-    """Number of chunks produced by any NVIDIA model."""
-    return sum(
-        1 for c in chunks
-        if getattr(c, "model_source", "") in _NVIDIA_SOURCES
-    )
+    """Fix 9: count chunks produced by any NVIDIA model."""
+    return sum(1 for c in chunks if getattr(c, "model_source", "") in _NVIDIA_SOURCES)
 
 
 def _avg_confidence(chunks) -> float:
-    """Average confidence_score across all chunks (v4 field)."""
     scores = [getattr(c, "confidence_score", 0.0) for c in chunks]
     return sum(scores) / len(scores) if scores else 0.0
 
+
+def _log_nvidia_signal(pdf_name: str, nvidia_ok: int, total: int, model_counts: dict) -> None:
+    """Fix 9: emit clear NVIDIA success/failure signal."""
+    if total == 0:
+        return
+    pct = round(nvidia_ok / total * 100)
+    if nvidia_ok == 0:
+        logger.warning(
+            "  🚨 No NVIDIA extraction succeeded for %s  (model_sources=%s)",
+            pdf_name, model_counts,
+        )
+    elif pct < 50:
+        logger.warning(
+            "  ⚠️  Low NVIDIA rate for %s: %d/%d chunks (%d%%)  (model_sources=%s)",
+            pdf_name, nvidia_ok, total, pct, model_counts,
+        )
+    else:
+        logger.info(
+            "  ✅ NVIDIA: %d/%d chunks (%d%%)  models=%s",
+            nvidia_ok, total, pct, model_counts,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Batch processor
+# ---------------------------------------------------------------------------
 
 def process_all(
     data_dir:     Path,
@@ -82,30 +99,26 @@ def process_all(
     force:    bool = False,
     dry_run:  bool = False,
 ) -> dict:
-    """
-    Process every PDF in data_dir and its subdirectories.
-    Returns a summary dict.
-    """
     from pdf_pipeline import PDFPipeline
 
-    pipeline = PDFPipeline(processed_dir=processed_dir)
-
+    pipeline  = PDFPipeline(processed_dir=processed_dir)
     pdf_files = sorted(data_dir.rglob("*.pdf"))
 
     if not pdf_files:
         logger.warning("No PDF files found in %s", data_dir)
-        return {"processed": 0, "skipped": 0, "failed": 0, "total_chunks": 0, "files": []}
+        return {"processed": 0, "skipped": 0, "failed": 0, "total_chunks": 0,
+                "total_nvidia": 0, "files": []}
 
     logger.info("Found %d PDF file(s)", len(pdf_files))
 
     processed_count = 0
-    skipped_count   = 0
     failed_count    = 0
     total_chunks    = 0
+    total_nvidia    = 0   # Fix 9: global nvidia counter
     results         = []
 
     for pdf_path in pdf_files:
-        logger.info("─" * 60)
+        logger.info("─" * 65)
         logger.info("Processing: %s", pdf_path.relative_to(data_dir))
 
         if dry_run:
@@ -120,66 +133,53 @@ def process_all(
 
         t0 = time.perf_counter()
         try:
-            chunks = pipeline.process(str(pdf_path))
+            chunks  = pipeline.process(str(pdf_path))
             elapsed = (time.perf_counter() - t0) * 1000
 
-            # ── EMPTY CHUNK GUARD ─────────────────────────────────────────
+            # ── Empty chunk guard ─────────────────────────────────────────
             if not chunks:
-                logger.warning(
-                    "  ⚠️  No chunks extracted (empty result) — %s", pdf_path.name
-                )
+                logger.warning("  ⚠️  No chunks extracted — %s", pdf_path.name)
                 failed_count += 1
                 continue
 
-            # ── MODEL TRACKING ────────────────────────────────────────────
-            model_counts  = _count_model_sources(chunks)
-            nvidia_success = _nvidia_success_count(chunks)
+            # ── Model tracking ────────────────────────────────────────────
+            model_counts   = _count_model_sources(chunks)
+            nvidia_ok      = _nvidia_success_count(chunks)   # Fix 9
             avg_conf       = _avg_confidence(chunks)
 
-            # Count doc types
             type_counts: dict[str, int] = {}
             for c in chunks:
                 type_counts[c.doc_type] = type_counts.get(c.doc_type, 0) + 1
 
-            # ── NVIDIA SUCCESS SIGNAL ─────────────────────────────────────
-            if nvidia_success == 0:
-                logger.warning(
-                    "  🚨 No NVIDIA extraction succeeded for %s  (model_sources=%s)",
-                    pdf_path.name, model_counts,
-                )
-            elif set(model_counts.keys()).issubset({"pdfplumber"}):
-                logger.warning(
-                    "  ⚠️  Fallback-only extraction (no NVIDIA success) — %s",
-                    pdf_path.name,
-                )
-            else:
-                nvidia_pct = round(nvidia_success / len(chunks) * 100)
-                logger.info(
-                    "  ✅ NVIDIA extracted %d/%d chunks (%d%%)",
-                    nvidia_success, len(chunks), nvidia_pct,
-                )
+            # Fix 9: emit the clear signal
+            _log_nvidia_signal(pdf_path.name, nvidia_ok, len(chunks), model_counts)
 
+            # Fix 9: detailed log line with nvidia_success/total
             logger.info(
-                "  ✅ %d chunks | %.0fms | bank=%s | types=%s | "
-                "models=%s | avg_conf=%.1f",
+                "  📄 %d chunks | %.0fms | bank=%s | types=%s | "
+                "models=%s | nvidia=%d/%d | conf=%.1f",
                 len(chunks), elapsed,
                 chunks[0].bank if chunks else "Unknown",
-                type_counts, model_counts, avg_conf,
+                type_counts, model_counts,
+                nvidia_ok, len(chunks),
+                avg_conf,
             )
 
             results.append({
-                "file":             pdf_path.name,
-                "bank":             chunks[0].bank if chunks else "Unknown",
-                "chunks":           len(chunks),
-                "type_counts":      type_counts,
-                "model_counts":     model_counts,
-                "nvidia_success":   nvidia_success,
-                "avg_confidence":   round(avg_conf, 2),
-                "elapsed_ms":       round(elapsed),
+                "file":           pdf_path.name,
+                "bank":           chunks[0].bank if chunks else "Unknown",
+                "chunks":         len(chunks),
+                "type_counts":    type_counts,
+                "model_counts":   model_counts,
+                "nvidia_success": nvidia_ok,
+                "nvidia_pct":     round(nvidia_ok / len(chunks) * 100),
+                "avg_confidence": round(avg_conf, 2),
+                "elapsed_ms":     round(elapsed),
             })
 
             processed_count += 1
             total_chunks    += len(chunks)
+            total_nvidia    += nvidia_ok   # Fix 9
 
         except Exception as e:
             logger.error("  ❌ Failed: %s — %s", pdf_path.name, e, exc_info=True)
@@ -187,20 +187,25 @@ def process_all(
 
     return {
         "processed":    processed_count,
-        "skipped":      skipped_count,
+        "skipped":      0,
         "failed":       failed_count,
         "total_chunks": total_chunks,
+        "total_nvidia": total_nvidia,   # Fix 9
         "files":        results,
     }
 
 
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
 def main():
-    parser = argparse.ArgumentParser(description="Batch PDF processing for Loan Advisor")
-    parser.add_argument("--force",      action="store_true", help="Reprocess even if cache exists")
-    parser.add_argument("--dry-run",    action="store_true", help="Show what would be processed")
-    parser.add_argument("--file",       type=str,            help="Process a single PDF file")
-    parser.add_argument("--data-dir",   default=None,        help="Override data directory")
-    parser.add_argument("--output-dir", default=None,        help="Override processed_data directory")
+    parser = argparse.ArgumentParser(description="Batch PDF processing — Loan Advisor v4.2")
+    parser.add_argument("--force",      action="store_true")
+    parser.add_argument("--dry-run",    action="store_true")
+    parser.add_argument("--file",       type=str, default=None)
+    parser.add_argument("--data-dir",   default=None)
+    parser.add_argument("--output-dir", default=None)
     args = parser.parse_args()
 
     from config import DATA_DIR, PROCESSED_DATA_DIR
@@ -209,7 +214,7 @@ def main():
     processed_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 65)
-    print("  Loan Advisor — PDF Processing Pipeline  (v4)")
+    print("  Loan Advisor — PDF Processing Pipeline  (v4.2)")
     print("=" * 65)
     print(f"  Data dir:      {data_dir}")
     print(f"  Output dir:    {processed_dir}")
@@ -218,7 +223,7 @@ def main():
     print()
 
     if args.file:
-        # ── Single file mode ──────────────────────────────────────────────
+        # ── Single-file mode ──────────────────────────────────────────────
         from pdf_pipeline import PDFPipeline
         pipeline = PDFPipeline(processed_dir=processed_dir)
 
@@ -227,51 +232,46 @@ def main():
             if cache.exists():
                 cache.unlink()
 
-        t0     = time.perf_counter()
-        chunks = pipeline.process(args.file)
+        t0      = time.perf_counter()
+        chunks  = pipeline.process(args.file)
         elapsed = (time.perf_counter() - t0) * 1000
 
         print(f"\n{'='*65}")
-        print(f"  Single-file result: {Path(args.file).name}")
+        print(f"  {Path(args.file).name}")
         print(f"{'='*65}")
 
-        # ── EMPTY CHUNK GUARD ─────────────────────────────────────────────
         if not chunks:
-            print("  ⚠️  No chunks extracted (empty result)")
+            print("  ⚠️  No chunks extracted")
             return
 
-        # ── MODEL TRACKING ────────────────────────────────────────────────
-        model_counts   = _count_model_sources(chunks)
-        nvidia_success = _nvidia_success_count(chunks)
-        avg_conf       = _avg_confidence(chunks)
-        type_counts    = {}
+        model_counts  = _count_model_sources(chunks)
+        nvidia_ok     = _nvidia_success_count(chunks)   # Fix 9
+        avg_conf      = _avg_confidence(chunks)
+        type_counts   = {}
         for c in chunks:
             type_counts[c.doc_type] = type_counts.get(c.doc_type, 0) + 1
 
-        print(f"  Chunks:          {len(chunks)}")
-        print(f"  Bank:            {chunks[0].bank}")
-        print(f"  Doc types:       {type_counts}")
-        print(f"  Model sources:   {model_counts}")
-        print(f"  Avg confidence:  {avg_conf:.1f}/10")
-        print(f"  Elapsed:         {elapsed:.0f}ms")
+        nvidia_pct = round(nvidia_ok / len(chunks) * 100)
 
-        # ── NVIDIA SUCCESS SIGNAL ─────────────────────────────────────────
-        if nvidia_success == 0:
-            print(f"\n  🚨 WARNING: No NVIDIA extraction succeeded")
-            print(f"     All chunks came from: {set(model_counts.keys())}")
-            print(f"     Check NVIDIA_API_KEY and USE_NVIDIA_PDF settings")
+        print(f"  Chunks:        {len(chunks)}")
+        print(f"  Bank:          {chunks[0].bank}")
+        print(f"  Doc types:     {type_counts}")
+        print(f"  Model sources: {model_counts}")
+        print(f"  Elapsed:       {elapsed:.0f}ms")
+        print(f"  Avg conf:      {avg_conf:.1f}/10")
+
+        # Fix 9: clear NVIDIA signal
+        print()
+        if nvidia_ok == 0:
+            print(f"  🚨 NVIDIA: 0/{len(chunks)} chunks (0%) — all from pdfplumber")
+            print(f"     Check: NVIDIA_API_KEY set? USE_NVIDIA_PDF=true?")
+        elif nvidia_pct < 50:
+            print(f"  ⚠️  NVIDIA: {nvidia_ok}/{len(chunks)} ({nvidia_pct}%) — below 50%")
         else:
-            nvidia_pct = round(nvidia_success / len(chunks) * 100)
-            print(f"\n  ✅ NVIDIA: {nvidia_success}/{len(chunks)} chunks ({nvidia_pct}%)")
+            print(f"  ✅ NVIDIA: {nvidia_ok}/{len(chunks)} ({nvidia_pct}%)")
 
-        print(f"\n  Sample chunk:")
-        print(f"    [{chunks[0].doc_type}|{chunks[0].model_source}] "
-              f"{chunks[0].text[:150]}…")
-
-        if len(chunks) > 1:
-            print(f"\n  Last chunk:")
-            print(f"    [{chunks[-1].doc_type}|{chunks[-1].model_source}] "
-                  f"{chunks[-1].text[:150]}…")
+        print(f"\n  Sample:")
+        print(f"    [{chunks[0].doc_type}|{chunks[0].model_source}] {chunks[0].text[:150]}")
 
     else:
         # ── Batch mode ────────────────────────────────────────────────────
@@ -282,56 +282,52 @@ def main():
             dry_run=args.dry_run,
         )
 
+        total    = summary["total_chunks"]
+        nv_total = summary["total_nvidia"]   # Fix 9
+
         print("\n" + "=" * 65)
         print("  Summary")
         print("=" * 65)
         print(f"  Processed:    {summary['processed']}")
         print(f"  Failed:       {summary['failed']}")
-        print(f"  Total chunks: {summary['total_chunks']}")
+        print(f"  Total chunks: {total}")
+
+        # Fix 9: global NVIDIA success rate
+        if total > 0:
+            global_pct = round(nv_total / total * 100)
+            flag = "✅" if global_pct >= 50 else ("⚠️ " if global_pct > 0 else "🚨")
+            print(f"  NVIDIA total: {flag} {nv_total}/{total} ({global_pct}%)")
 
         if summary["files"]:
-            print("\n  Per-file breakdown:")
-            print(f"  {'File':<38} {'Chunks':>6}  {'Bank':<10}  {'NVIDIA%':>7}  {'Conf':>5}  Models")
-            print(f"  {'-'*38}  {'-'*6}  {'-'*10}  {'-'*7}  {'-'*5}  ------")
+            print()
+            print(f"  {'File':<36} {'Chunks':>6}  {'NVIDIA%':>7}  {'Conf':>5}  Models")
+            print(f"  {'-'*36}  {'-'*6}  {'-'*7}  {'-'*5}  ------")
 
-            total_nvidia = 0
-            total_all    = 0
             for f in summary["files"]:
-                nvidia_ok  = f.get("nvidia_success", 0)
-                total_all_f = f.get("chunks", 1)
-                nvidia_pct = round(nvidia_ok / max(total_all_f, 1) * 100)
-                models_str = ", ".join(
-                    f"{k}:{v}" for k, v in sorted(
-                        f.get("model_counts", {}).items(),
-                        key=lambda x: -x[1],
-                    )
+                nv_ok  = f.get("nvidia_success", 0)
+                nv_pct = f.get("nvidia_pct", 0)
+                flag   = "✅" if nv_pct >= 50 else ("⚠️ " if nv_ok > 0 else "🚨")
+                models = ", ".join(
+                    f"{k}:{v}" for k, v in
+                    sorted(f.get("model_counts", {}).items(), key=lambda x: -x[1])
                 )
-                conf_str = f"{f.get('avg_confidence', 0.0):.1f}"
-                nvidia_icon = "✅" if nvidia_ok > 0 else "🚨"
                 print(
-                    f"  {f['file']:<38} {total_all_f:>6}  {f['bank']:<10}  "
-                    f"{nvidia_icon}{nvidia_pct:>4}%  {conf_str:>5}  {models_str}"
+                    f"  {f['file']:<36} {f['chunks']:>6}  "
+                    f"{flag}{nv_pct:>4}%  {f.get('avg_confidence',0):>5.1f}  {models}"
                 )
-                total_nvidia += nvidia_ok
-                total_all    += total_all_f
-
-            if total_all > 0:
-                overall_pct = round(total_nvidia / total_all * 100)
-                print(f"\n  Overall NVIDIA success: {total_nvidia}/{total_all} chunks ({overall_pct}%)")
-
-        logger.info("=" * 65)
-        logger.info("SUMMARY:")
-        logger.info("  Processed : %d", summary["processed"])
-        logger.info("  Skipped   : %d", summary["skipped"])
-        logger.info("  Failed    : %d", summary["failed"])
-        logger.info("  Chunks    : %d", summary["total_chunks"])
-        logger.info("=" * 65)
 
         print()
         if summary["processed"] > 0:
-            print("  ✅ Done. Run bootstrap.py to rebuild the FAISS index.")
+            print("  ✅ Done. Run: python bootstrap.py to rebuild FAISS + BM25 index.")
         elif not args.dry_run:
             print("  ⚠️  No PDFs found. Add .pdf files to data/ subdirectories.")
+
+        # Logger summary
+        logger.info("=" * 65)
+        logger.info("SUMMARY  processed=%d  failed=%d  chunks=%d  nvidia=%d/%d",
+                    summary["processed"], summary["failed"],
+                    total, nv_total, total)
+        logger.info("=" * 65)
 
 
 if __name__ == "__main__":
