@@ -94,26 +94,51 @@ def process_all(
             elapsed = (time.perf_counter() - t0) * 1000
 
             if not chunks:
-                logger.warning("  ⚠️  No chunks extracted from %s", pdf_path.name)
+                logger.warning("  ⚠️  No chunks extracted (empty result) — %s", pdf_path.name)
                 failed_count += 1
                 continue
 
-            # Count element types
+            # Count doc types
             type_counts: dict[str, int] = {}
             for c in chunks:
                 type_counts[c.doc_type] = type_counts.get(c.doc_type, 0) + 1
 
+            # Count model sources
+            model_counts: dict[str, int] = {}
+            for c in chunks:
+                src = getattr(c, "model_source", "unknown")
+                model_counts[src] = model_counts.get(src, 0) + 1
+
+            # Warn if NVIDIA never contributed
+            nvidia_sources = {"page_elements", "ocr", "table_structure",
+                              "page_elements+ocr"}
+            nvidia_success = sum(
+                1 for c in chunks
+                if getattr(c, "model_source", "") in nvidia_sources
+            )
+            if nvidia_success == 0:
+                logger.warning(
+                    "  🚨 No NVIDIA extraction succeeded — %s  (model_sources=%s)",
+                    pdf_path.name, model_counts,
+                )
+            elif set(model_counts.keys()).issubset({"pdfplumber"}):
+                logger.warning(
+                    "  ⚠️  Fallback-only extraction (no NVIDIA success) — %s",
+                    pdf_path.name,
+                )
+
             logger.info(
-                "  ✅ %d chunks | %.0fms | bank=%s | types=%s",
-                len(chunks), elapsed, chunks[0].bank, type_counts,
+                "  ✅ %d chunks | %.0fms | bank=%s | types=%s | models=%s",
+                len(chunks), elapsed, chunks[0].bank, type_counts, model_counts,
             )
 
             results.append({
-                "file":        pdf_path.name,
-                "bank":        chunks[0].bank,
-                "chunks":      len(chunks),
-                "type_counts": type_counts,
-                "elapsed_ms":  round(elapsed),
+                "file":         pdf_path.name,
+                "bank":         chunks[0].bank,
+                "chunks":       len(chunks),
+                "type_counts":  type_counts,
+                "model_counts": model_counts,
+                "elapsed_ms":   round(elapsed),
             })
 
             processed_count += 1
@@ -168,10 +193,15 @@ def main():
         print(f"\n✅ Processed {args.file}")
         print(f"   Chunks: {len(chunks)}")
         if chunks:
+            model_src = {}
+            for c in chunks:
+                s = getattr(c, "model_source", "unknown")
+                model_src[s] = model_src.get(s, 0) + 1
             print(f"   Bank:   {chunks[0].bank}")
             print(f"   Types:  {set(c.doc_type for c in chunks)}")
+            print(f"   Models: {model_src}")
             print(f"\nSample chunk:")
-            print(f"  [{chunks[0].doc_type}] {chunks[0].text[:150]}…")
+            print(f"  [{chunks[0].doc_type}|{getattr(chunks[0],'model_source','')}] {chunks[0].text[:150]}…")
     else:
         # Batch mode
         summary = process_all(
@@ -191,7 +221,21 @@ def main():
         if summary["files"]:
             print("\n  Per-file breakdown:")
             for f in summary["files"]:
-                print(f"    {f['file']:<35} {f['chunks']:>4} chunks  [{f['bank']}]")
+                models_str = ", ".join(
+                    f"{k}:{v}" for k, v in f.get("model_counts", {}).items()
+                )
+                print(
+                    f"    {f['file']:<35} {f['chunks']:>4} chunks  "
+                    f"[{f['bank']}]  models={models_str or 'n/a'}"
+                )
+
+        logger.info("=" * 60)
+        logger.info("SUMMARY:")
+        logger.info("  Processed : %d", summary["processed"])
+        logger.info("  Skipped   : %d", summary["skipped"])
+        logger.info("  Failed    : %d", summary["failed"])
+        logger.info("  Chunks    : %d", summary["total_chunks"])
+        logger.info("=" * 60)
 
         print()
         if summary["processed"] > 0:

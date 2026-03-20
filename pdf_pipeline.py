@@ -80,7 +80,7 @@ _MAX_PDF_BYTES = 5 * 1024 * 1024   # 5 MB
 # DPI is stepped down if the encoded image exceeds this.
 _MAX_B64_BYTES  = 180_000
 _DPI_HIGH       = 150   # first attempt
-_DPI_LOW        = 100   # retry if image too large at high DPI
+_DPI_LOW        = 72    # retry if image too large — 72 DPI stays safely under NVIDIA limit
 
 # HTTP status codes that warrant a retry
 _RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
@@ -371,7 +371,7 @@ def _nvidia_post(
     filename:    str,
     max_retries: int   = 3,
     retry_delay: float = 2.0,
-    timeout:     int   = 60,
+    timeout:     int   = 30,
 ) -> dict | list:
     """
     POST a PNG image to any NVIDIA CV endpoint using the correct format:
@@ -484,6 +484,10 @@ def _nvidia_post(
             if attempt < max_retries:
                 time.sleep(retry_delay)
 
+    logger.error(
+        "[NVIDIA API] Final failure after %d retries for %s: %s",
+        max_retries, url.split("/")[-1], last_err,
+    )
     raise RuntimeError(
         f"NVIDIA API ({url.split('/')[-1]}) failed after {max_retries} attempts: {last_err}"
     )
@@ -739,27 +743,53 @@ def _process_single_page(
         logger.warning("[PDFPipeline] p%d  OCR FAILED (%s)", page_number, e2)
 
     # ── Merge: page_elements provides structure; OCR provides text ────────
-    # Strategy: use page_elements as the base; append OCR text elements that
-    # are not already represented (avoids duplication of existing text nodes).
+    # page_elements returns structural labels reliably but text content is
+    # often empty ("text": "") for scanned/stylised PDFs.
+    # We must check actual content length, not just element type presence.
     if pe_ok or ocr_elements:
-        # "text", "paragraph", "list_item" carry readable body text.
-        # "title" and "figure_caption" are structural labels — they don't
-        # count as text coverage for the purposes of OCR gap-filling.
-        has_text_from_pe = any(
-            e.get("type") in ("text", "paragraph", "list_item")
-            for e in pe_elements
-        )
+        def _has_meaningful_text(elems: list[dict], min_len: int = 20) -> bool:
+            """True if any element has real readable content (not just a label)."""
+            for e in elems:
+                t = str(e.get("content", "") or "").strip()
+                if len(t) >= min_len:
+                    return True
+            return False
+
+        has_real_text = _has_meaningful_text(pe_elements)
         merged = list(pe_elements)
-        if ocr_elements and not has_text_from_pe:
-            # page_elements gave us structure but no readable text —
-            # add OCR text elements to fill the gap
+
+        if ocr_elements and not has_real_text:
+            # page_elements gave us structural labels but no readable body text
+            # (empty "text" field) — inject OCR output to fill the gap
             merged.extend(ocr_elements)
+            logger.info(
+                "[PDFPipeline] p%d  OCR injected (page_elements had no readable text)",
+                page_number,
+            )
         elif ocr_elements and not pe_ok:
-            # page_elements failed entirely — use OCR output
+            # page_elements API call failed entirely — use OCR as sole source
             merged = ocr_elements
 
-        if merged:
-            model_tag = "page_elements+ocr" if (pe_ok and ocr_elements and not has_text_from_pe)                         else ("ocr" if not pe_ok else "page_elements")
+        # Gate: only return success if at least one element has real text.
+        # Must check all possible text fields — NIM uses different field names
+        # across model versions ("content", "text", "content_text").
+        def _has_any_content(elems: list[dict]) -> bool:
+            for e in elems:
+                t = (
+                    str(e.get("content",       "") or "")
+                    or str(e.get("text",        "") or "")
+                    or str(e.get("content_text","") or "")
+                ).strip()
+                if len(t) > 10:
+                    return True
+            return False
+
+        has_any_content = _has_any_content(merged)
+        if merged and has_any_content:
+            model_tag = (
+                "page_elements+ocr" if (pe_ok and ocr_elements and not has_real_text)
+                else ("ocr" if not pe_ok else "page_elements")
+            )
             return _PageResult(page_number, merged, model_tag, True)
 
     # ── All NVIDIA models failed → signal pdfplumber gap-fill ─────────────
@@ -891,7 +921,7 @@ def _chunk_elements(
         if not buffer_words:
             return
         text = _clean_text(" ".join(buffer_words))
-        if len(text.split()) < 5:
+        if not text:
             buffer_words = []
             return
         chunks.append(StructuredChunk(
@@ -907,14 +937,21 @@ def _chunk_elements(
     for elem in elements:
         etype   = elem.get("element_type") or elem.get("type", "text")
         # table elements may have pre-rendered text from table_structure step
-        content = elem.get("content_text") or elem.get("content", "")
+        content = (
+            elem.get("content_text")
+            or elem.get("content")
+            or elem.get("text")          # NIM / OCR sometimes stores text here
+            or elem.get("value")
+            or elem.get("description")
+            or ""
+        )
         page    = elem.get("page", 0)
         src     = elem.get("element_type", model_source) if elem.get("element_type") == "ocr" else model_source
 
         if etype in ("title", "heading"):
             flush_buffer()
             current_section = _clean_text(str(content)) if content else ""
-            if current_section and len(current_section.split()) >= 2:
+            if current_section:
                 chunks.append(StructuredChunk(
                     text=current_section, source=source, bank=bank,
                     doc_type="paragraph", chunk_id=chunk_id,
@@ -933,7 +970,7 @@ def _chunk_elements(
             if not readable.strip():
                 continue
             for sub in _split_into_sentences(readable, table_max_words):
-                if len(sub.split()) < 3:
+                if not sub.strip():
                     continue
                 chunks.append(StructuredChunk(
                     text=sub, source=source, bank=bank,
@@ -947,7 +984,7 @@ def _chunk_elements(
         elif etype == "figure_caption":
             flush_buffer()
             text = _clean_text(str(content))
-            if text and len(text.split()) >= 4:
+            if text:
                 chunks.append(StructuredChunk(
                     text=text, source=source, bank=bank,
                     doc_type="paragraph", chunk_id=chunk_id,
@@ -957,7 +994,17 @@ def _chunk_elements(
                 chunk_id += 1
 
         else:   # text, list_item, ocr
+            if content is None:
+                continue
             text = _clean_text(str(content))
+            if not text:
+                # content field is empty — try other string fields in the element
+                # (handles cases where NVIDIA returns text in an unexpected field)
+                for fallback_key in ("text", "value", "description", "body"):
+                    alt = str(elem.get(fallback_key, "") or "").strip()
+                    if alt:
+                        text = _clean_text(alt)
+                        break
             if not text:
                 continue
             words = text.split()
@@ -1167,6 +1214,26 @@ class PDFPipeline:
         for page_dict in raw_pages:
             elements   = page_dict.get("elements", [])
             model_used = page_dict.get("model", "page_elements")
+
+            # Debug: check all possible text fields (NIM varies field names by model version)
+            sample_texts = []
+            for _e in elements:
+                _t = (
+                    str(_e.get("content",       "") or "")
+                    or str(_e.get("text",        "") or "")
+                    or str(_e.get("content_text","") or "")
+                ).strip()
+                if _t:
+                    sample_texts.append(_t)
+            sample = sample_texts[0][:120] if sample_texts else "NO TEXT FOUND IN ANY FIELD"
+            logger.info(
+                "[DEBUG] p%d  elements=%d  model=%s  has_text=%s  sample=%s",
+                page_dict.get("page", "?"),
+                len(elements),
+                model_used,
+                bool(sample_texts),
+                sample,
+            )
 
             # Improve bank detection from actual page content
             if bank == "Unknown":
