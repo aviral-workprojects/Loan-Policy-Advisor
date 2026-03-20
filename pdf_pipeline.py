@@ -31,7 +31,6 @@ Usage:
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import json
 import logging
@@ -255,87 +254,156 @@ def table_to_text(table_data: dict | list | str) -> tuple[str, dict]:
 _PAGE_ELEMENTS_URL = "https://ai.api.nvidia.com/v1/cv/nvidia/nemoretriever-page-elements-v3"
 
 def _call_page_elements_api(
-    pdf_bytes: bytes,
-    api_key:   str,
+    pdf_path: Path,
+    api_key:  str,
     max_retries: int = 3,
     retry_delay: float = 2.0,
 ) -> list[dict]:
     """
-    Send a PDF to the NVIDIA Page Elements API and return the raw elements list.
+    Send a PDF to the NVIDIA nemoretriever-page-elements-v3 API.
+
+    REQUEST FORMAT (critical):
+        multipart/form-data with the PDF file as "file" field.
+        Do NOT use json= or base64 body — the endpoint is a CV model
+        that expects a raw file upload, identical to an HTML <input type="file">.
+
+    Retry policy:
+        Retries on: timeout, 429 (rate limit), 5xx (server errors)
+        Does NOT retry: 422 (bad request format), 401/403 (auth), 400
 
     Returns:
-        List of page dicts: [{"page": N, "elements": [...]}]
+        Normalised list of page dicts: [{"page": N, "elements": [...]}]
 
     Raises:
-        RuntimeError if all retries exhausted.
+        requests.exceptions.HTTPError for non-retryable HTTP errors.
+        RuntimeError if all retries are exhausted.
 
-    Response schema per page:
-        {
-          "page": 1,
-          "elements": [
-            {
-              "type": "text" | "table" | "title" | "figure_caption" | "list_item",
-              "content": "..." | {...},   # table is dict/list, others are str
-              "bbox": [x1, y1, x2, y2]   # optional bounding box
-            }
-          ]
-        }
+    Response shapes handled:
+        {"pages": [...]}                  → standard multi-page
+        [{"page": N, "elements": [...]}]  → list directly
+        {"elements": [...]}               → single-page
     """
+    # Only Authorization + Accept — do NOT set Content-Type manually.
+    # requests sets it automatically to multipart/form-data with the
+    # correct boundary when files= is used.
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Accept": "application/json",
     }
 
-    # Encode PDF as base64
-    pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
-
-    payload = {
-        "input": pdf_b64,
-        "input_type": "pdf",
-    }
-
     last_err: Exception | None = None
+
     for attempt in range(1, max_retries + 1):
         try:
-            logger.info("[PDFPipeline] API call attempt %d/%d", attempt, max_retries)
-            resp = requests.post(
-                _PAGE_ELEMENTS_URL,
-                json=payload,
-                headers=headers,
-                timeout=60,  # PDFs can be large
-            )
-            resp.raise_for_status()
+            logger.info("[PDFPipeline] Attempt %d/%d — %s", attempt, max_retries, pdf_path.name)
+
+            with open(pdf_path, "rb") as fh:
+                resp = requests.post(
+                    _PAGE_ELEMENTS_URL,
+                    headers=headers,
+                    files={"file": (pdf_path.name, fh, "application/pdf")},
+                    timeout=60,
+                )
+
+            # ── Detailed error logging BEFORE raise_for_status ────────────
+            if resp.status_code == 422:
+                logger.error(
+                    "[PDFPipeline] 422 Unprocessable Entity — "
+                    "request format rejected by NVIDIA API. "
+                    "Response body: %s", resp.text[:500],
+                )
+                # 422 means the server understood the request but rejected
+                # its content — retrying with same payload won't help.
+                raise requests.exceptions.HTTPError(
+                    f"422 Unprocessable Entity: {resp.text[:200]}",
+                    response=resp,
+                )
+
+            if resp.status_code == 401:
+                logger.error("[PDFPipeline] 401 Unauthorized — check NVIDIA_API_KEY")
+                raise requests.exceptions.HTTPError("401 Unauthorized", response=resp)
+
+            if resp.status_code == 400:
+                logger.error(
+                    "[PDFPipeline] 400 Bad Request — %s", resp.text[:300]
+                )
+                raise requests.exceptions.HTTPError(
+                    f"400 Bad Request: {resp.text[:200]}", response=resp
+                )
+
+            resp.raise_for_status()   # catches any other 4xx/5xx
+
             data = resp.json()
 
-            # Normalise response shape:
-            # Some endpoints return {"pages": [...]} others return a list directly
+            # ── Normalise response shape ──────────────────────────────────
             if isinstance(data, list):
-                return data
-            if "pages" in data:
-                return data["pages"]
-            if "elements" in data:
-                # Single-page response
-                return [{"page": 1, "elements": data["elements"]}]
-            return data  # unknown shape — return as-is
+                pages = data
+            elif "pages" in data:
+                pages = data["pages"]
+            elif "elements" in data:
+                pages = [{"page": 1, "elements": data["elements"]}]
+            else:
+                # Unknown shape — log and return as-is for best-effort parsing
+                logger.warning(
+                    "[PDFPipeline] Unexpected response shape: %s",
+                    list(data.keys()) if isinstance(data, dict) else type(data),
+                )
+                pages = data
+
+            # ── Log success ───────────────────────────────────────────────
+            total_elements = sum(len(p.get("elements", [])) for p in pages) if isinstance(pages, list) else 0
+            type_counts: dict[str, int] = {}
+            if isinstance(pages, list):
+                for p in pages:
+                    for e in p.get("elements", []):
+                        t = e.get("type", "unknown")
+                        type_counts[t] = type_counts.get(t, 0) + 1
+
+            logger.info(
+                "[PDFPipeline] NVIDIA extraction SUCCESS — "
+                "%d pages, %d elements, types=%s",
+                len(pages) if isinstance(pages, list) else "?",
+                total_elements,
+                type_counts,
+            )
+            return pages
 
         except requests.exceptions.Timeout:
-            last_err = TimeoutError(f"NVIDIA API timed out on attempt {attempt}")
+            last_err = TimeoutError(f"Timed out on attempt {attempt}")
             logger.warning("[PDFPipeline] Timeout on attempt %d", attempt)
+
         except requests.exceptions.HTTPError as e:
             last_err = e
-            if resp.status_code in (429, 503):
-                logger.warning("[PDFPipeline] Rate limit / server error — waiting %.1fs", retry_delay * attempt)
-                time.sleep(retry_delay * attempt)
+            status = e.response.status_code if e.response is not None else 0
+            # Only retry on rate limit (429) or server errors (5xx)
+            if status in (429, 502, 503, 504):
+                wait = retry_delay * attempt
+                logger.warning(
+                    "[PDFPipeline] HTTP %d on attempt %d — retrying in %.1fs",
+                    status, attempt, wait,
+                )
+                time.sleep(wait)
             else:
-                raise   # non-retryable HTTP error
+                # 400, 401, 403, 422 etc. — retrying won't help
+                logger.error(
+                    "[PDFPipeline] Non-retryable HTTP %d — aborting retries: %s",
+                    status, e,
+                )
+                raise
+
         except Exception as e:
             last_err = e
-            logger.warning("[PDFPipeline] Unexpected error attempt %d: %s", attempt, e)
+            logger.warning(
+                "[PDFPipeline] Unexpected error on attempt %d: %s",
+                attempt, e,
+            )
 
         if attempt < max_retries:
             time.sleep(retry_delay)
 
-    raise RuntimeError(f"NVIDIA Page Elements API failed after {max_retries} attempts: {last_err}")
+    raise RuntimeError(
+        f"NVIDIA Page Elements API failed after {max_retries} attempts: {last_err}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -649,15 +717,33 @@ class PDFPipeline:
         return chunks
 
     def _process_nvidia(self, pdf_path: Path, bank: str) -> list[StructuredChunk]:
-        """Call NVIDIA Page Elements API and convert response to chunks."""
+        """
+        Call NVIDIA Page Elements API and convert response to structured chunks.
+        Falls back to pdfplumber only on real failures (not request format errors,
+        which are surfaced immediately so the caller can fix config).
+        """
         try:
-            pdf_bytes = pdf_path.read_bytes()
             raw_pages = _call_page_elements_api(
-                pdf_bytes,
+                pdf_path,                        # pass Path, not bytes
                 api_key=self.api_key,
                 max_retries=self._max_retries,
                 retry_delay=self._retry_delay,
             )
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code if e.response is not None else 0
+            if status in (401, 403):
+                # Auth failures — don't fall back silently, raise so the user knows
+                raise RuntimeError(
+                    f"NVIDIA API authentication failed (HTTP {status}). "
+                    f"Check NVIDIA_API_KEY in your .env file."
+                ) from e
+            # 422 / 400 / other client errors — fall back with clear warning
+            logger.warning(
+                "[PDFPipeline] NVIDIA API request error (HTTP %d) for %s: %s "
+                "— falling back to pdfplumber. Check pdf_pipeline.py if this persists.",
+                status, pdf_path.name, e,
+            )
+            return _fallback_extract(pdf_path, bank)
         except Exception as e:
             logger.warning(
                 "[PDFPipeline] NVIDIA API failed for %s: %s — falling back to pdfplumber",
@@ -701,3 +787,67 @@ def process_pdf(file_path: str) -> list[dict]:
     pipeline = PDFPipeline()
     chunks   = pipeline.process(file_path)
     return [c.to_dict() for c in chunks]
+
+
+def test_single_pdf(file_path: str, api_key: str | None = None) -> None:
+    """
+    Quick smoke-test: process one PDF and print a summary.
+    Run from project root:
+        python -c "from pdf_pipeline import test_single_pdf; test_single_pdf('data/hdfc_pdfs/hdfc_personal_loan.pdf')"
+
+    Args:
+        file_path : path to any .pdf file
+        api_key   : NVIDIA API key (reads NVIDIA_API_KEY from .env if not supplied)
+    """
+    import os
+    from pathlib import Path
+
+    key = api_key or os.getenv("NVIDIA_API_KEY", "")
+
+    print(f"[test_single_pdf] File:        {file_path}")
+    print(f"[test_single_pdf] API key set: {bool(key)}")
+    print(f"[test_single_pdf] USE_NVIDIA:  {os.getenv('USE_NVIDIA_PDF', 'false')}")
+    print()
+
+    # Direct API test (bypasses cache and pipeline logic)
+    if key:
+        print("[test_single_pdf] Testing raw NVIDIA API call…")
+        try:
+            pages = _call_page_elements_api(
+                Path(file_path),
+                api_key=key,
+                max_retries=1,    # single attempt for quick smoke test
+                retry_delay=1.0,
+            )
+            type_counts: dict[str, int] = {}
+            for p in pages:
+                for e in p.get("elements", []):
+                    t = e.get("type", "?")
+                    type_counts[t] = type_counts.get(t, 0) + 1
+            print(f"[test_single_pdf] SUCCESS — pages={len(pages)}, elements={type_counts}")
+
+            # Show first 3 elements
+            print("[test_single_pdf] First elements:")
+            for p in pages[:2]:
+                for e in p.get("elements", [])[:3]:
+                    preview = str(e.get("content", ""))[:80]
+                    print(f"  [{e.get('type')}] {preview}")
+
+        except Exception as e:
+            print(f"[test_single_pdf] FAILED: {e}")
+    else:
+        print("[test_single_pdf] Skipping raw API test — NVIDIA_API_KEY not set")
+
+    print()
+    print("[test_single_pdf] Running full pipeline (with fallback)…")
+    pipeline = PDFPipeline(api_key=key or None)
+    chunks = pipeline.process(file_path)
+    print(f"[test_single_pdf] Total chunks: {len(chunks)}")
+    if chunks:
+        type_counts2: dict[str, int] = {}
+        for c in chunks:
+            type_counts2[c.doc_type] = type_counts2.get(c.doc_type, 0) + 1
+        print(f"[test_single_pdf] Chunk types: {type_counts2}")
+        print(f"[test_single_pdf] Bank:        {chunks[0].bank}")
+        print(f"[test_single_pdf] Sample chunk:")
+        print(f"  [{chunks[0].doc_type}] {chunks[0].text[:120]}")
