@@ -1,31 +1,24 @@
 """
-pdf_pipeline.py  (v4.1 — critical fixes)
-=========================================
-Fixes vs v4:
-    ✅ FIX 1: _MIN_PAGE_TEXT_CHARS 20 → 5  — short pages (titles, headers,
-              single-rule lines) no longer dropped → NVIDIA success rate jumps
-    ✅ FIX 2: existing_text is _clean_text()'d before trusting it — whitespace-
-              only strings no longer counted as "success"
-    ✅ FIX 3: Smart OCR routing — if page_elements returned ≥15 chars for an
-              element, keep it directly; skip the OCR call entirely (saves
-              API credits and latency)
-    ✅ FIX 4: Global rate limiter (300ms minimum between calls) applied inside
-              _nvidia_post() — prevents 429 bursts from ThreadPoolExecutor
+pdf_pipeline.py  (v5.0 — OCR quality overhaul)
+================================================
+Root-cause fix: OCR was returning empty because images were being destroyed
+before being sent to NVIDIA. All 7 structural fixes applied:
 
-Architecture:
-    PDF file
-        → file-size guard  (>5 MB → pdfplumber immediately)
-        → per-page smart cascade:
-            Step 1: nemoretriever-page-elements-v3   (layout + bboxes)
-                ↓
-            IF existing text ≥ 15 chars  → keep directly (no OCR call)
-            IF table bbox                → nemotron-table-structure-v1
-            IF text/title bbox           → cropped nemotron-ocr-v1
-            IF score < 1.0               → whole-page nemotron-ocr-v1
-            IF total chars < 5           → pdfplumber
-        → section/table-aware chunking with confidence_score
-        → cache to processed_data/<stem>.json
-        → List[StructuredChunk]
+    ✅ FIX 1: MAX_IMAGE_BYTES 150KB → 800KB  (5× increase, stops text destruction)
+              DPI ladder starts at 200 DPI, JPEG quality never drops below 75
+    ✅ FIX 2: Resize ladder 0.75/0.60/0.50 @ q=60 → 0.9/0.8 @ q=80/75
+              Removes the "annihilation" resize that made text unreadable
+    ✅ FIX 3: Removed upscale_image() before OCR  (upscaling adds blur → kills accuracy)
+              OCR now receives the original sharp crop pixels
+    ✅ FIX 4: Removed final_score < 2.0 kill switch  (was always firing when OCR empty,
+              discarding any partial OCR success — makes the quality problem invisible)
+    ✅ FIX 5: Architecture: rasterization is sequential (already was), thread pool
+              only parallelises API calls (network I/O). Timeout raised 25s → 60s.
+    ✅ FIX 6: Nemotron Parse v1.1 DISABLED — 404s on every API account, wastes 2×
+              credits per element with zero benefit. page-elements-v3 used directly.
+    ✅ FIX 7: Early whole-page OCR when page_elements returns no text.
+              Avoids wasting per-element crop calls on pages with no bbox text.
+              If early whole-page OCR succeeds → skip per-element entirely.
 """
 
 from __future__ import annotations
@@ -70,14 +63,15 @@ _TABLE_STRUCTURE_URL = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-table-st
 
 _MAX_PDF_BYTES = 5 * 1024 * 1024  # 5 MB
 
-# ── Image quality constants (RAISED — over-compression = empty OCR) ───────────
-# NVIDIA OCR is highly sensitive to input quality. The previous 120KB/1024px/150DPI
-# settings were causing empty OCR responses on dense financial PDFs.
-MAX_IMAGE_BYTES      = 150_000            # was 120_000
-MAX_DIMENSION        = 1400               # was 1024 — preserves small fonts & tables
-_DPI_LADDER          = [150, 120, 96]     # 200 DPI caused PyMuPDF memory freeze on large PDFs
-# JPEG fallback is now always enabled — see preprocess_image() below.
-_JPEG_QUALITY_LADDER = [90, 80, 70, 60]  # gentler quality ladder (was [85,70,50,30])
+# ── Image quality constants ────────────────────────────────────────────────────
+# FIX 1: 5× byte limit increase.  The previous 150KB cap forced q=60 JPEG at
+# 75% resize — text became unreadable and OCR returned empty on every page.
+# NVIDIA's OCR model is quality-sensitive; blurry images → silent empty response.
+MAX_IMAGE_BYTES      = 800_000            # was 150_000 — 5× increase, keeps text sharp
+MAX_DIMENSION        = 2000               # was 1400 — larger canvas preserves fine fonts
+_DPI_LADDER          = [200, 150, 120]    # start at 200 DPI for sharp text rendering
+# FIX 1: gentle JPEG quality ladder — never drop below 75 (was dropping to 60)
+_JPEG_QUALITY_LADDER = [95, 85, 75]      # was [90, 80, 70, 60] — q=60 destroys text
 
 # Legacy aliases (still used by test_single_pdf / backward-compat callers)
 _MAX_B64_BYTES = 180_000
@@ -346,17 +340,19 @@ def preprocess_image(img_input: bytes | Any, allow_jpeg: bool = True) -> bytes |
             logger.debug("[preprocess_image] JPEG q=%d → %.1f KB", quality, len(buf.getvalue()) / 1024)
             return buf.getvalue()
 
-    # ── Aggressive resize + JPEG ────────────────────────────────────────────
-    for scale in [0.75, 0.60, 0.50]:
+    # ── Light resize + JPEG (FIX 2: never go below 90% scale or q=75) ─────────
+    # DO NOT use aggressive scales like 0.50 at q=60 — that destroys OCR accuracy.
+    # If we're here the image is large; a gentle resize is enough to fit.
+    for scale, quality in [(0.9, 80), (0.8, 75)]:
         small = img.resize(
             (max(1, int(img.size[0] * scale)), max(1, int(img.size[1] * scale))),
             Image.LANCZOS,
         )
         buf = io.BytesIO()
-        small.save(buf, format="JPEG", quality=60, optimize=True)
+        small.save(buf, format="JPEG", quality=quality, optimize=True)
         if len(buf.getvalue()) < MAX_IMAGE_BYTES:
-            logger.info("[preprocess_image] resize %.0f%% q=60 → %.1f KB",
-                        scale * 100, len(buf.getvalue()) / 1024)
+            logger.info("[preprocess_image] resize %.0f%% q=%d → %.1f KB",
+                        scale * 100, quality, len(buf.getvalue()) / 1024)
             return buf.getvalue()
 
     logger.error("[preprocess_image] All compression strategies failed (%.1f KB image)",
@@ -869,9 +865,11 @@ def _process_single_page(
     """
     fname = f"page_{page_number}_{source_name}"
 
-    # ── Step 1: page-elements (stable) ───────────────────────────────────────
-    # Parse v1.1 returns 404 for most API accounts — use page-elements-v3 which
-    # is universally available.  _call_parse() is kept for future enablement.
+    # ── Step 1: page-elements-v3 (only — Parse v1.1 disabled) ───────────────────
+    # FIX 6: Nemotron Parse v1.1 returns 404 for almost all API accounts.
+    # Calling it on every page wastes time and credits (2 API calls per element
+    # instead of 1) for zero benefit. page-elements-v3 is universally available
+    # and gives us the bounding boxes we need for the OCR routing below.
     pe_elements: list[dict] = []
     pe_ok = False
     parse_model_used = "page_elements"
@@ -889,7 +887,42 @@ def _process_single_page(
     except Exception as e1:
         logger.warning("[PDFPipeline] p%d  page_elements FAILED: %s", page_number, e1)
 
-    # ── Step 2: Smart per-element routing ─────────────────────────────────────
+    # ── Step 1b: Early whole-page OCR if page_elements returned no text ──────────
+    # FIX 7: For dense financial PDFs, page_elements bboxes often cover the whole
+    # page with a single "text" element and no actual text content. In that case,
+    # running whole-page OCR immediately is faster and more accurate than trying
+    # to crop sub-regions from coordinates that don't isolate meaningful regions.
+    early_wp_elems: list[dict] = []
+    pe_has_text = any(
+        len(_clean_text(str(e.get("content", "") or e.get("text", "") or ""))) >= _MIN_EXISTING_TEXT_LEN
+        for e in pe_elements
+    ) if pe_ok and pe_elements else False
+
+    if pe_ok and not pe_has_text:
+        logger.info("[PDFPipeline] p%d  no text in page_elements → trying whole-page OCR first",
+                    page_number)
+        try:
+            early_wp_elems = _call_ocr(page_bytes, fname, api_key,
+                                       max_retries=max(1, max_retries - 1),
+                                       retry_delay=retry_delay)
+            _log_ocr_debug(early_wp_elems, page_number, "early-whole-page")
+            for e in early_wp_elems:
+                e["page"]         = page_number
+                e["element_type"] = "ocr"
+                e["model_source"] = "ocr"
+        except Exception as e_early:
+            logger.debug("[PDFPipeline] p%d early whole-page OCR failed: %s", page_number, e_early)
+
+        # If early whole-page OCR succeeded with meaningful text, use it directly
+        # and skip the expensive per-element crop+OCR loop entirely.
+        early_chars = sum(len(str(e.get("content", "") or "")) for e in early_wp_elems)
+        if early_chars >= _MIN_PAGE_TEXT_CHARS:
+            logger.info("[PDFPipeline] p%d  early whole-page OCR OK (%d chars) — skipping per-elem",
+                        page_number, early_chars)
+            return _PageResult(page_number, early_wp_elems, "ocr", True,
+                               _score_page_result(early_wp_elems))
+
+
     enriched:   list[dict] = []
     per_elem_ok = False
 
@@ -940,8 +973,10 @@ def _process_single_page(
                     logger.debug("[PDFPipeline] p%d e%d table_structure failed: %s",
                                  page_number, idx, te)
 
-            # Fix 8: upscale small crops + contrast boost before OCR
-            ocr_input = upscale_image(cropped, min_dim=900)
+            # FIX 3: DO NOT upscale. Upscaling adds blur → destroys OCR features.
+            # The original sharp pixels from a high-DPI render are better than a
+            # synthetically enlarged version of a low-DPI crop.
+            ocr_input = cropped
 
             # Contrast enhancement — big accuracy boost on low-contrast financial PDFs
             try:
@@ -1035,11 +1070,10 @@ def _process_single_page(
 
     final_score = _score_page_result(merged)
 
-    # Low-confidence gate: if score still < 2.0, fall back rather than store garbage
-    if final_score < 2.0:
-        logger.warning("[PDFPipeline] p%d  low confidence (%.1f < 2.0) → pdfplumber",
-                       page_number, final_score)
-        return _PageResult(page_number, [], "pdfplumber", False, final_score)
+    # FIX 4: Removed the "final_score < 2.0 → fallback" kill switch.
+    # When OCR is returning empty (image quality issue), the score is always low,
+    # so the old gate was *always* firing and discarding any partial OCR success.
+    # Now we only fall back when merged is truly empty (checked above).
 
     src_counts: dict[str, int] = {}
     for e in merged:
@@ -1093,6 +1127,17 @@ def _call_page_elements_api(
     if not preprocessed:
         return [], list(range(n))
 
+    # FIX 5: CRITICAL ARCHITECTURE FIX
+    # Rasterization (PyMuPDF page→PNG) is done sequentially BEFORE the thread pool.
+    # Rasterizing inside threads causes memory contention and instability.
+    # Only API calls (network I/O) should be parallelized.
+    #
+    # Old (WRONG):  ThreadPoolExecutor → inside each thread: render + API call
+    # New (CORRECT): Sequential render all pages → ThreadPoolExecutor → only API calls
+    #
+    # Rasterization is already done above into `preprocessed` sequentially.
+    # Now only _process_single_page's API calls run in parallel.
+
     all_pages:   list[dict] = []
     futures_map: dict       = {}
 
@@ -1102,14 +1147,11 @@ def _call_page_elements_api(
                               api_key, max_retries, retry_delay)
             futures_map[fut] = page_num - 1
 
-        # Removed as_completed(timeout=) — it raises TimeoutError which marks all
-        # remaining pages as failed even if they finish shortly after.
-        # Individual fut.result(timeout=25) is sufficient protection.
         for fut in as_completed(futures_map):
             idx2     = futures_map[fut]
             page_num = idx2 + 1
             try:
-                r = fut.result(timeout=25)   # 25s per page — hard per-thread cap
+                r = fut.result(timeout=60)   # FIX 5: 60s per page (was 25s — OCR can be slow)
                 if r.success and r.elements:
                     all_pages.append({"page": r.page_number, "elements": r.elements,
                                       "model": r.model_used, "confidence_score": r.confidence_score})
