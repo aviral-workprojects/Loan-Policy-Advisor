@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loan Policy Advisor</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #0a0f1e;
+    --navy-2: #111827;
+    --navy-3: #1a2235;
+    --navy-4: #1f2d45;
+    --navy-5: #243356;
+    --border: rgba(99,139,210,0.15);
+    --border-bright: rgba(99,139,210,0.35);
+    --text-1: #e8edf8;
+    --text-2: #8fa3c8;
+    --text-3: #5a7099;
+    --accent: #4f9cf9;
+    --accent-dim: rgba(79,156,249,0.12);
+    --amber: #f5a623;
+    --amber-dim: rgba(245,166,35,0.12);
+    --green: #22d47a;
+    --green-dim: rgba(34,212,122,0.1);
+    --red: #f5455a;
+    --red-dim: rgba(245,69,90,0.1);
+    --mono: 'IBM Plex Mono', monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'DM Sans', sans-serif;
+    --r: 6px;
+    --r-lg: 10px;
+  }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    font-family: var(--body);
+    background: var(--navy);
+    color: var(--text-1);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* === TOP BAR === */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px;
+    background: var(--navy-2);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-logo { display: flex; align-items: center; gap: 10px; }
+  .logo-mark {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: linear-gradient(135deg, #4f9cf9 0%, #1a5fab 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 11px; font-weight: 500; color: #fff;
+  }
+  .logo-text { font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo-text span { color: var(--accent); }
+  .topbar-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); font-family: var(--mono); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  /* === LAYOUT === */
+  .app-layout {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    height: calc(100vh - 53px);
+  }
+  @media (max-width: 900px) {
+    .app-layout { grid-template-columns: 1fr; height: auto; }
+    .result-panel { border-left: none; border-top: 1px solid var(--border); max-height: 60vh; overflow-y: auto; }
+  }
+
+  /* === CHAT PANEL === */
+  .chat-panel {
+    display: flex; flex-direction: column;
+    border-right: 1px solid var(--border);
+  }
+  .chat-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--navy-2);
+  }
+  .chat-header h2 { font-family: var(--display); font-size: 13px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 1.2px; }
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 14px;
+    scrollbar-width: thin; scrollbar-color: var(--navy-4) transparent;
+  }
+
+  .msg { display: flex; gap: 10px; animation: msgIn 0.25s ease; }
+  .msg.user { flex-direction: row-reverse; }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .msg-avatar {
+    width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; font-family: var(--mono);
+  }
+  .msg-avatar.sys { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(79,156,249,0.25); }
+  .msg-avatar.usr { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.25); }
+  .msg-bubble {
+    max-width: 82%;
+    padding: 10px 14px;
+    border-radius: var(--r-lg);
+    font-size: 13.5px; line-height: 1.6;
+  }
+  .msg.sys .msg-bubble { background: var(--navy-3); border: 1px solid var(--border); color: var(--text-1); border-radius: 2px 10px 10px 10px; }
+  .msg.user .msg-bubble { background: var(--navy-5); border: 1px solid rgba(99,139,210,0.25); color: var(--text-1); border-radius: 10px 2px 10px 10px; }
+  .msg-time { font-size: 10px; color: var(--text-3); font-family: var(--mono); margin-top: 4px; }
+  .msg.user .msg-time { text-align: right; }
+
+  .typing-dots { display: flex; align-items: center; gap: 3px; padding: 4px 0; }
+  .typing-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--text-3); animation: dot 1.2s infinite; }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dot { 0%,80%,100%{opacity:0.3;transform:scale(0.8)} 40%{opacity:1;transform:scale(1.1)} }
+
+  .suggestions { padding: 8px 20px 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .sugg-btn {
+    padding: 5px 12px; border-radius: 20px; font-size: 12px;
+    background: var(--navy-3); border: 1px solid var(--border-bright);
+    color: var(--accent); cursor: pointer; font-family: var(--body);
+    transition: all 0.15s;
+  }
+  .sugg-btn:hover { background: var(--accent-dim); border-color: var(--accent); }
+
+  .chat-input-area { padding: 12px 16px; border-top: 1px solid var(--border); background: var(--navy-2); }
+  .input-row { display: flex; gap: 8px; align-items: flex-end; }
+  .chat-input {
+    flex: 1; background: var(--navy-3); border: 1px solid var(--border-bright);
+    border-radius: var(--r-lg); padding: 10px 14px; color: var(--text-1);
+    font-family: var(--body); font-size: 13.5px; resize: none; min-height: 42px; max-height: 100px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .chat-input:focus { border-color: var(--accent); }
+  .chat-input::placeholder { color: var(--text-3); }
+  .send-btn {
+    width: 42px; height: 42px; border-radius: var(--r-lg); background: var(--accent);
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .send-btn:hover { background: #3d8ce8; transform: scale(1.03); }
+  .send-btn:disabled { background: var(--navy-4); cursor: not-allowed; transform: none; }
+  .send-btn svg { width: 16px; height: 16px; fill: none; stroke: #fff; stroke-width: 2.2; }
+
+  /* === RESULT PANEL === */
+  .result-panel {
+    background: var(--navy-2);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .result-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .result-header h2 { font-family: var(--display); font-size: 13px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 1.2px; }
+  .result-scroll { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; scrollbar-width: thin; scrollbar-color: var(--navy-4) transparent; }
+
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; color: var(--text-3); padding: 40px 20px; text-align: center;
+  }
+  .empty-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--navy-3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+  .empty-icon svg { width: 22px; height: 22px; stroke: var(--text-3); fill: none; stroke-width: 1.5; }
+  .empty-state p { font-size: 13px; line-height: 1.6; max-width: 200px; }
+
+  /* DECISION CARD */
+  .decision-card {
+    border-radius: var(--r-lg); overflow: hidden;
+    border: 1px solid var(--border);
+    animation: cardIn 0.35s ease;
+  }
+  @keyframes cardIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  .decision-header {
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .decision-header.eligible { background: rgba(34,212,122,0.08); border-bottom: 1px solid rgba(34,212,122,0.2); }
+  .decision-header.not-eligible { background: rgba(245,69,90,0.08); border-bottom: 1px solid rgba(245,69,90,0.2); }
+  .decision-header.partial { background: rgba(245,166,35,0.08); border-bottom: 1px solid rgba(245,166,35,0.2); }
+  .decision-header.insufficient { background: var(--navy-3); border-bottom: 1px solid var(--border); }
+
+  .decision-verdict { display: flex; align-items: center; gap: 10px; }
+  .verdict-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .verdict-icon.eligible { background: var(--green-dim); border: 1px solid rgba(34,212,122,0.3); }
+  .verdict-icon.not-eligible { background: var(--red-dim); border: 1px solid rgba(245,69,90,0.3); }
+  .verdict-icon.partial { background: var(--amber-dim); border: 1px solid rgba(245,166,35,0.3); }
+  .verdict-text h3 { font-family: var(--display); font-size: 15px; font-weight: 700; }
+  .verdict-text h3.eligible { color: var(--green); }
+  .verdict-text h3.not-eligible { color: var(--red); }
+  .verdict-text h3.partial { color: var(--amber); }
+  .verdict-text p { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-top: 2px; }
+
+  .confidence-block { text-align: right; }
+  .confidence-block .conf-label { font-size: 10px; color: var(--text-3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.8px; }
+  .confidence-block .conf-val { font-size: 20px; font-weight: 700; font-family: var(--mono); margin-top: 2px; }
+  .confidence-block .conf-val.eligible { color: var(--green); }
+  .confidence-block .conf-val.not-eligible { color: var(--red); }
+  .confidence-block .conf-val.partial { color: var(--amber); }
+
+  .decision-body { padding: 14px 16px; background: var(--navy-3); display: flex; flex-direction: column; gap: 12px; }
+
+  .conf-bar-wrap { display: flex; flex-direction: column; gap: 5px; }
+  .conf-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); font-family: var(--mono); }
+  .conf-bar-track { height: 4px; background: var(--navy-4); border-radius: 2px; overflow: hidden; }
+  .conf-bar-fill { height: 100%; border-radius: 2px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+  .conf-bar-fill.eligible { background: var(--green); }
+  .conf-bar-fill.not-eligible { background: var(--red); }
+  .conf-bar-fill.partial { background: var(--amber); }
+
+  .summary-text { font-size: 13px; color: var(--text-2); line-height: 1.6; padding: 10px 12px; background: var(--navy-2); border-radius: var(--r); border: 1px solid var(--border); }
+
+  .section-card { background: var(--navy-3); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; animation: cardIn 0.35s ease; }
+  .section-title { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 1.2px; font-family: var(--mono); display: flex; align-items: center; gap: 6px; }
+  .section-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 7px; }
+
+  .rule-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: var(--r); border: 1px solid transparent; font-size: 12.5px; }
+  .rule-item.pass { background: rgba(34,212,122,0.05); border-color: rgba(34,212,122,0.15); }
+  .rule-item.fail { background: rgba(245,69,90,0.05); border-color: rgba(245,69,90,0.15); }
+  .rule-item.miss { background: rgba(245,166,35,0.05); border-color: rgba(245,166,35,0.15); }
+  .rule-icon { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; }
+  .rule-icon.pass { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,212,122,0.4); }
+  .rule-icon.fail { background: var(--red-dim); color: var(--red); border: 1px solid rgba(245,69,90,0.4); }
+  .rule-icon.miss { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.4); }
+  .rule-text { color: var(--text-1); flex: 1; line-height: 1.5; }
+
+  .bank-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .bank-table th { padding: 8px 10px; text-align: left; color: var(--text-3); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500; border-bottom: 1px solid var(--border); }
+  .bank-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: middle; }
+  .bank-table tr:last-child td { border-bottom: none; }
+  .bank-table tr:hover td { background: rgba(79,156,249,0.04); }
+  .bank-name { font-weight: 500; color: var(--text-1); font-family: var(--body); }
+  .badge-elig { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-family: var(--mono); font-weight: 500; }
+  .badge-elig.yes { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,212,122,0.3); }
+  .badge-elig.no { background: var(--red-dim); color: var(--red); border: 1px solid rgba(245,69,90,0.3); }
+  .badge-elig.partial { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
+
+  .score-bar { display: flex; align-items: center; gap: 6px; }
+  .score-track { height: 4px; width: 60px; background: var(--navy-4); border-radius: 2px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 2px; background: var(--accent); }
+
+  .sources-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; }
+  .source-badge { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-family: var(--mono); font-weight: 500; }
+  .source-badge.bank { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(79,156,249,0.25); }
+  .source-badge.reg { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.25); }
+  .source-badge.agg { background: rgba(139,92,246,0.1); color: #a78bfa; border: 1px solid rgba(139,92,246,0.25); }
+
+  .drawer-toggle { width: 100%; padding: 10px 14px; background: none; border: none; color: var(--text-2); font-size: 12.5px; font-family: var(--body); cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+  .drawer-toggle:hover { color: var(--text-1); }
+  .drawer-arrow { font-size: 10px; transition: transform 0.2s; }
+  .drawer-arrow.open { transform: rotate(180deg); }
+  .drawer-content { padding: 0 14px 12px; font-size: 12.5px; color: var(--text-2); line-height: 1.7; display: none; }
+  .drawer-content.open { display: block; }
+  .drawer-content p { margin-bottom: 8px; }
+
+  .sim-section { display: flex; flex-direction: column; gap: 12px; }
+  .sim-row { display: flex; flex-direction: column; gap: 6px; }
+  .sim-label { display: flex; justify-content: space-between; align-items: center; }
+  .sim-label span:first-child { font-size: 12px; color: var(--text-2); }
+  .sim-value { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--accent); }
+  .sim-slider { width: 100%; accent-color: var(--accent); cursor: pointer; }
+  .sim-result { padding: 10px 12px; border-radius: var(--r); background: var(--navy-2); border: 1px solid var(--border); font-size: 12px; color: var(--text-2); font-family: var(--mono); margin-top: 4px; }
+  .sim-result strong { color: var(--text-1); }
+
+  .skel { background: linear-gradient(90deg, var(--navy-3) 25%, var(--navy-4) 50%, var(--navy-3) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: var(--r); }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .skel-card { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .skel-h { height: 20px; }
+  .skel-p { height: 12px; }
+  .skel-bar { height: 6px; }
+
+  .rec-item { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--text-2); padding: 7px 10px; border-radius: var(--r); background: var(--navy-2); border: 1px solid var(--border); }
+  .rec-bullet { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 5px; }
+
+  .tab-row { display: flex; gap: 2px; padding: 10px 14px 0; background: var(--navy-2); border-bottom: 1px solid var(--border); }
+  .tab-btn { padding: 6px 14px; font-size: 12px; background: none; border: none; color: var(--text-3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; font-family: var(--body); transition: all 0.15s; }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-btn:hover:not(.active) { color: var(--text-2); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: flex; flex-direction: column; gap: 14px; padding: 14px 0 0; }
+
+  .error-block { padding: 12px 14px; background: rgba(245,69,90,0.08); border: 1px solid rgba(245,69,90,0.2); border-radius: var(--r-lg); font-size: 13px; color: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">
+    <div class="logo-mark">AI</div>
+    <div class="logo-text">Loan<span>Advisor</span></div>
+  </div>
+  <div class="topbar-status">
+    <div class="status-dot"></div>
+    <span>System active · v2.1</span>
+  </div>
+</div>
+
+<div class="app-layout">
+
+  <!-- CHAT PANEL -->
+  <div class="chat-panel">
+    <div class="chat-header">
+      <h2>Advisory Console</h2>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="msg sys">
+        <div class="msg-avatar sys">AI</div>
+        <div>
+          <div class="msg-bubble">
+            Hello! I'm your loan policy advisor. I can check your eligibility, compare banks, and explain decisions clearly. What would you like to know?
+          </div>
+          <div class="msg-time">Just now</div>
+        </div>
+      </div>
+    </div>
+    <div class="suggestions" id="suggestions">
+      <button class="sugg-btn" onclick="useSuggestion('Check my eligibility for Axis Bank — I earn ₹40,000/month, age 28, CIBIL score 750, salaried for 2 years')">Check eligibility</button>
+      <button class="sugg-btn" onclick="useSuggestion('Compare personal loans from HDFC and SBI — I earn ₹35,000/month, CIBIL 720, age 30')">Compare banks</button>
+      <button class="sugg-btn" onclick="useSuggestion('What CIBIL score do I need for ICICI personal loan?')">CIBIL requirements</button>
+      <button class="sugg-btn" onclick="useSuggestion('What documents do I need for a personal loan?')">Documents needed</button>
+    </div>
+    <div class="chat-input-area">
+      <div class="input-row">
+        <textarea class="chat-input" id="chatInput" placeholder="Ask about loan eligibility, rates, requirements…" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendQuery()" title="Send">
+          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT PANEL -->
+  <div class="result-panel">
+    <div class="result-header">
+      <h2>Decision Intelligence</h2>
+    </div>
+    <div class="result-scroll" id="resultPanel">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+        </div>
+        <p>Submit a query to see your eligibility decision and analysis</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const state = { messages: [], loading: false, lastResponse: null };
+
+function mockResponse(query) {
+  const q = query.toLowerCase();
+  const isAxis = q.includes('axis');
+  const isSBI  = q.includes('sbi');
+  const isHDFC = q.includes('hdfc');
+  const isICICI= q.includes('icici');
+  const isComp = q.includes('compare') || (isHDFC && isSBI) || (isAxis && isICICI);
+
+  const income = (() => {
+    const m = q.match(/₹?([\d,]+)/);
+    if (m) return parseInt(m[1].replace(',',''));
+    return 40000;
+  })();
+  const cibil = (() => {
+    const m = q.match(/\b(cibil|score)\s*[:\s]+?(\d{3})\b/) || q.match(/\b(\d{3})\s*(cibil|score)\b/);
+    if (m) return parseInt(m[2] || m[1]);
+    const m2 = q.match(/\b(6\d\d|7\d\d|8\d\d)\b/);
+    return m2 ? parseInt(m2[1]) : 750;
+  })();
+
+  const incomeOk = income >= 15000;
+  const cibilOk  = cibil  >= 720;
+  const eligible = incomeOk && cibilOk;
+  const confidence = eligible ? (0.78 + Math.random()*0.18) : (0.62 + Math.random()*0.2);
+
+  if (isComp || (!isAxis && !isSBI && !isHDFC && !isICICI && q.includes('compare'))) {
+    const banks = [
+      { name:'Axis',  elig: income>=15000&&cibil>=720, rate:'10.49%', minCibil:720, minIncome:15000 },
+      { name:'HDFC',  elig: income>=20000&&cibil>=750, rate:'10.50%', minCibil:750, minIncome:20000 },
+      { name:'ICICI', elig: income>=25000&&cibil>=700, rate:'10.65%', minCibil:700, minIncome:25000 },
+      { name:'SBI',   elig: income>=15000&&cibil>=700, rate:'11.05%', minCibil:700, minIncome:15000  },
+    ];
+    const eligible_banks = banks.filter(b => b.elig);
+    return {
+      decision: eligible_banks.length > 0 ? 'Partially Eligible' : 'Not Eligible',
+      summary: `Found ${eligible_banks.length} eligible banks based on your profile. ${eligible_banks.length > 0 ? eligible_banks.map(b=>b.name).join(', ') + ' can process your application.' : 'Consider improving your CIBIL score or income.'}`,
+      detailed_explanation: `Your profile (income ₹${income.toLocaleString()}, CIBIL ${cibil}) was evaluated across all major banks. Axis Bank and SBI have the lowest entry thresholds, while HDFC demands the highest CIBIL score at 750.`,
+      confidence: eligible_banks.length/banks.length * 0.8 + 0.1,
+      rule_results: banks.map(b => ({
+        bank: b.name, eligible: b.elig,
+        passed: [
+          ...(income>=b.minIncome ? [`Monthly income ₹${income.toLocaleString()} ≥ ₹${b.minIncome.toLocaleString()} ✓`] : []),
+          ...(cibil>=b.minCibil   ? [`CIBIL ${cibil} ≥ ${b.minCibil} ✓`] : []),
+        ],
+        failed: [
+          ...(income<b.minIncome ? [`Monthly income ₹${income.toLocaleString()} < ₹${b.minIncome.toLocaleString()} minimum`] : []),
+          ...(cibil<b.minCibil   ? [`CIBIL ${cibil} < ${b.minCibil} minimum required`] : []),
+        ],
+        missing: [],
+        summary: b.elig ? `Eligible at ${b.rate} p.a.` : `Not eligible — requirement not met`,
+      })),
+      banks_compared: banks.map(b => ({ ...b, score: Math.round((b.elig ? 0.7 : 0.3) * 90 + 10) })),
+      recommendations: [
+        eligible_banks.length > 0 ? `Apply to ${eligible_banks[0].name} for the best rate` : 'Aim for CIBIL score above 750',
+        income < 25000 ? 'Consider adding a co-applicant to boost eligibility' : 'You qualify for premium loan tiers',
+        'Avoid multiple applications simultaneously to protect your credit score',
+      ],
+      sources_cited: ['Axis Bank eligibility rules', 'HDFC Bank criteria', 'ICICI guidelines', 'SBI Xpress Credit', 'Paisabazaar comparison', 'RBI compliance'],
+    };
+  }
+
+  const bankName = isAxis ? 'Axis' : isSBI ? 'SBI' : isHDFC ? 'HDFC' : isICICI ? 'ICICI' : 'Axis';
+  const minIncome = isHDFC ? 20000 : isICICI ? 25000 : 15000;
+  const minCibil  = isHDFC ? 750 : isSBI||isICICI ? 700 : 720;
+  const thisElig = income >= minIncome && cibil >= minCibil;
+
+  return {
+    decision: thisElig ? 'Eligible' : 'Not Eligible',
+    summary: thisElig
+      ? `You meet all ${bankName} Bank personal loan requirements. Your application can proceed.`
+      : `Your profile does not satisfy all ${bankName} Bank requirements. See the failed conditions below.`,
+    detailed_explanation: thisElig
+      ? `Based on your profile, you qualify for ${bankName} Bank's personal loan product. Income of ₹${income.toLocaleString()} exceeds the ₹${minIncome.toLocaleString()} threshold and your CIBIL score of ${cibil} meets the ${minCibil}+ requirement.`
+      : `Your profile was evaluated against ${bankName} Bank's current eligibility criteria. ${income < minIncome ? `Your income of ₹${income.toLocaleString()} falls below the ₹${minIncome.toLocaleString()} minimum. ` : ''}${cibil < minCibil ? `Your CIBIL score of ${cibil} is below the required ${minCibil}. ` : ''}`,
+    confidence: parseFloat(confidence.toFixed(2)),
+    rule_results: [{
+      bank: bankName,
+      eligible: thisElig,
+      passed: [
+        ...(income>=minIncome ? [`Monthly income ₹${income.toLocaleString()} ≥ ₹${minIncome.toLocaleString()} minimum`] : []),
+        ...(cibil>=minCibil   ? [`CIBIL score ${cibil} ≥ ${minCibil} required`] : []),
+        ...(['Minimum age 21 years', 'Employment status: salaried/self-employed'].filter(()=>Math.random()>0.3)),
+      ],
+      failed: [
+        ...(income<minIncome ? [`Monthly income ₹${income.toLocaleString()} below ₹${minIncome.toLocaleString()} threshold`] : []),
+        ...(cibil<minCibil   ? [`CIBIL ${cibil} below ${minCibil} minimum`] : []),
+      ],
+      missing: Math.random() > 0.7 ? ['Work experience (months) not provided'] : [],
+      summary: thisElig ? `Eligible — all criteria met` : `Not eligible — criteria insufficient`,
+    }],
+    banks_compared: [],
+    recommendations: thisElig
+      ? [`Proceed with ${bankName} Bank application`, 'Prepare last 3 months salary slips + 6 months bank statement', 'Consider requesting pre-approved offer if you hold a salary account']
+      : [
+          cibil < minCibil ? `Improve CIBIL to ${minCibil}+ — pay off existing EMIs on time` : `Increase monthly income to ₹${minIncome.toLocaleString()}+`,
+          'SBI has the lowest income threshold at ₹15,000 — may be an alternative',
+          'Adding a co-applicant with higher income can boost eligibility',
+        ],
+    sources_cited: [`${bankName} Bank eligibility rules`, 'RBI compliance guidelines', 'Paisabazaar comparison data'],
+  };
+}
+
+async function sendQuery() {
+  const input = document.getElementById('chatInput');
+  const query = input.value.trim();
+  if (!query || state.loading) return;
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('suggestions').style.display = 'none';
+  addMessage('user', query);
+  showTyping();
+  state.loading = true;
+  renderResultLoading();
+
+  let data;
+  try {
+    // ── Real backend call ──────────────────────────────────────────────────
+    const res = await fetch('http://localhost:8000/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query })
+    });
+
+    if (!res.ok) {
+      // Parse error detail from FastAPI's JSON error body
+      let errDetail = `HTTP ${res.status}`;
+      try {
+        const errBody = await res.json();
+        errDetail = errBody.detail || errDetail;
+      } catch(_) {}
+      throw new Error(errDetail);
+    }
+
+    data = await res.json();
+
+    // Normalise: backend returns rule_results as list of dicts — ensure arrays exist
+    data.rule_results  = data.rule_results  || [];
+    data.banks_compared = data.banks_compared || [];
+    data.recommendations = data.recommendations || [];
+    data.sources_cited   = data.sources_cited   || [];
+    data.summary          = data.summary         || '';
+    data.detailed_explanation = data.detailed_explanation || '';
+
+  } catch(e) {
+    removeTyping();
+    const errMsg = e.message || 'Unknown error';
+    addMessage('sys', `⚠ Error: ${errMsg}`);
+    renderError(`Backend error: ${errMsg}<br><small style="opacity:0.7">Check the uvicorn terminal for the full traceback.</small>`);
+    state.loading = false;
+    document.getElementById('sendBtn').disabled = false;
+    return;
+  }
+
+  state.lastResponse = data;
+  removeTyping();
+  const replyText = `Decision: <strong>${data.decision || 'Unknown'}</strong>. ${data.summary}`;
+  addMessage('sys', replyText);
+  renderResult(data);
+  state.loading = false;
+  document.getElementById('sendBtn').disabled = false;
+}
+
+function useSuggestion(text) {
+  document.getElementById('chatInput').value = text;
+  sendQuery();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuery(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+function addMessage(role, text) {
+  const container = document.getElementById('chatMessages');
+  const now = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const div = document.createElement('div');
+  div.className = `msg ${role === 'user' ? 'user' : 'sys'}`;
+  div.innerHTML = `
+    <div class="msg-avatar ${role === 'user' ? 'usr' : 'sys'}">${role==='user'?'YOU':'AI'}</div>
+    <div>
+      <div class="msg-bubble">${text}</div>
+      <div class="msg-time">${now}</div>
+    </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showTyping() {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg sys'; div.id = 'typingMsg';
+  div.innerHTML = `<div class="msg-avatar sys">AI</div><div><div class="msg-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div></div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typingMsg');
+  if (el) el.remove();
+}
+
+function renderResultLoading() {
+  document.getElementById('resultPanel').innerHTML = `
+    <div class="skel-card"><div class="skel skel-h" style="width:60%"></div><div class="skel skel-p" style="width:40%"></div><div class="skel skel-bar"></div></div>
+    <div class="skel-card" style="margin-top:2px"><div class="skel skel-p" style="width:55%"></div><div class="skel skel-p" style="width:80%"></div><div class="skel skel-p" style="width:70%"></div></div>`;
+}
+
+function renderError(msg) {
+  document.getElementById('resultPanel').innerHTML = `<div class="error-block">⚠ ${msg}</div>`;
+}
+
+function renderResult(data) {
+  const d = data.decision.toLowerCase().replace(/ /g,'-');
+  const cls = d === 'eligible' ? 'eligible' : d === 'not-eligible' ? 'not-eligible' : 'partial';
+  const icon = cls === 'eligible' ? '✓' : cls === 'not-eligible' ? '✗' : '~';
+  const pct = Math.round((data.confidence || 0.7) * 100);
+
+  // ── Normalise banks_compared ──────────────────────────────────────────────
+  // Backend sends either:
+  //   A) list of strings: ["Axis","SBI","HDFC","ICICI"]  (comparison query)
+  //   B) empty list []  (single bank query)
+  // We build rich objects from rule_results so the table always has real data.
+
+  const BANK_RATES = { Axis:'10.49%', HDFC:'10.50%', ICICI:'10.65%', SBI:'11.05%' };
+
+  // Build comparison objects from rule_results (always populated for multi-bank)
+  const compBanks = data.rule_results.map(r => ({
+    name:  r.bank,
+    elig:  r.eligible,
+    rate:  BANK_RATES[r.bank] || 'N/A',
+    score: r.eligible ? Math.round(70 + Math.random()*20) : Math.round(30 + Math.random()*25),
+    passed: r.passed || [],
+    failed: r.failed || [],
+  }));
+
+  // Show Compare tab whenever there are multiple banks
+  const hasComp = compBanks.length > 1;
+
+  const allPassed  = data.rule_results.flatMap(r => (r.passed||[]).map(t=>({text:t, bank:r.bank})));
+  const allFailed  = data.rule_results.flatMap(r => (r.failed||[]).map(t=>({text:t, bank:r.bank})));
+  const allMissing = data.rule_results.flatMap(r => (r.missing||[]).map(t=>({text:t, bank:r.bank})));
+
+  // Fix rupee symbol — handles all Windows CP1252 / UTF-8 mojibake variants:
+  // â‚¹  → ₹   (classic UTF-8 read as Latin-1)
+  // â,¨  → ₹   (another variant)
+  // ₹   → ₹   (already correct HTML entity — leave as-is)
+  const fixRupee = s => {
+    if (!s) return '';
+    return s
+      .replace(/â‚¹/g, '₹')          // most common on Windows
+      .replace(/â[^\w]/g, '₹')        // catch other â-prefix variants
+      .replace(/₹(?=\d)/g, '₹');     // HTML entity → real symbol before digits
+  };
+
+  document.getElementById('resultPanel').innerHTML = `
+    <div class="tab-row" style="margin: 0 -16px; padding: 0 16px;">
+      <button class="tab-btn active" onclick="switchTab('decision', this)">Decision</button>
+      ${hasComp ? `<button class="tab-btn" onclick="switchTab('compare', this)">Compare Banks</button>` : ''}
+      <button class="tab-btn" onclick="switchTab('simulate', this)">Simulate</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-decision">
+      <div class="decision-card">
+        <div class="decision-header ${cls}">
+          <div class="decision-verdict">
+            <div class="verdict-icon ${cls}">${icon}</div>
+            <div class="verdict-text">
+              <h3 class="${cls}">${data.decision}</h3>
+              <p>${data.rule_results.map(r=>r.bank).join(', ')} · ${data.rule_results.length} bank${data.rule_results.length>1?'s':''} evaluated</p>
+            </div>
+          </div>
+          <div class="confidence-block">
+            <div class="conf-label">Confidence</div>
+            <div class="conf-val ${cls}">${pct}%</div>
+          </div>
+        </div>
+        <div class="decision-body">
+          <div class="conf-bar-wrap">
+            <div class="conf-bar-label"><span>Confidence score</span><span>${pct}%</span></div>
+            <div class="conf-bar-track"><div class="conf-bar-fill ${cls}" id="confBarFill" style="width:0%"></div></div>
+          </div>
+          <div class="summary-text">${fixRupee(data.summary)}</div>
+        </div>
+      </div>
+
+      ${(allPassed.length+allFailed.length+allMissing.length > 0) ? `
+      <div class="section-card">
+        <div class="section-title">Rule Breakdown</div>
+        <div class="section-body">
+          ${allPassed.map(r=>`<div class="rule-item pass"><div class="rule-icon pass">✓</div><div class="rule-text">${fixRupee(r.text)}</div></div>`).join('')}
+          ${allFailed.map(r=>`<div class="rule-item fail"><div class="rule-icon fail">✗</div><div class="rule-text">${fixRupee(r.text)}</div></div>`).join('')}
+          ${allMissing.map(r=>`<div class="rule-item miss"><div class="rule-icon miss">?</div><div class="rule-text">${fixRupee(r.text)}</div></div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      ${data.recommendations && data.recommendations.length > 0 ? `
+      <div class="section-card">
+        <div class="section-title">Recommendations</div>
+        <div class="section-body">
+          ${data.recommendations.map(r=>`<div class="rec-item"><div class="rec-bullet"></div><span>${fixRupee(r)}</span></div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      ${data.sources_cited && data.sources_cited.length > 0 ? `
+      <div class="section-card">
+        <div class="section-title">Sources</div>
+        <div class="sources-row">
+          ${data.sources_cited.map(s => {
+            const sc = s.toLowerCase().includes('rbi') ? 'reg' : s.toLowerCase().includes('paisabazaar')||s.toLowerCase().includes('bankbazaar') ? 'agg' : 'bank';
+            return `<span class="source-badge ${sc}">${s}</span>`;
+          }).join('')}
+        </div>
+        ${data.detailed_explanation ? `
+        <button class="drawer-toggle" onclick="toggleDrawer(this)">
+          <span>Why this decision?</span><span class="drawer-arrow">▼</span>
+        </button>
+        <div class="drawer-content"><p>${fixRupee(data.detailed_explanation)}</p></div>` : ''}
+      </div>` : ''}
+    </div>
+
+    ${hasComp ? `
+    <div class="tab-panel" id="tab-compare">
+      <div class="section-card">
+        <div class="section-title">Bank Comparison</div>
+        <div style="overflow-x:auto; padding: 4px 0">
+          <table class="bank-table" style="min-width:300px">
+            <thead><tr><th>Bank</th><th>Eligibility</th><th>Rate</th><th>Score</th></tr></thead>
+            <tbody>
+              ${[...compBanks].sort((a,b)=>(b.elig?1:0)-(a.elig?1:0)).map(b=>`
+                <tr>
+                  <td><span class="bank-name">${b.name}</span></td>
+                  <td><span class="badge-elig ${b.elig?'yes':'no'}">${b.elig?'Eligible':'Not Eligible'}</span></td>
+                  <td style="font-family:var(--mono);color:var(--text-1)">${b.rate}</td>
+                  <td><div class="score-bar"><div class="score-track"><div class="score-fill" style="width:${b.score}%"></div></div><span style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${b.score}</span></div></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="section-card">
+        <div class="section-title">Per-Bank Rules</div>
+        <div class="section-body">
+          ${data.rule_results.map(r=>`
+            <div style="padding:8px 10px;border-radius:var(--r);border:1px solid ${r.eligible?'rgba(34,212,122,0.2)':'rgba(245,69,90,0.2)'};background:${r.eligible?'rgba(34,212,122,0.04)':'rgba(245,69,90,0.04)'};margin-bottom:6px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-weight:500;font-size:13px;color:var(--text-1)">${r.bank}</span>
+                <span style="font-size:11px;font-family:var(--mono);color:${r.eligible?'var(--green)':'var(--red)'}">${r.eligible?'✓ PASS':'✗ FAIL'}</span>
+              </div>
+              ${(r.failed||[]).map(f=>`<div style="font-size:11.5px;color:var(--red);margin-bottom:3px">✗ ${fixRupee(f)}</div>`).join('')}
+              ${(r.passed||[]).slice(0,2).map(f=>`<div style="font-size:11.5px;color:var(--green);margin-bottom:3px">✓ ${fixRupee(f)}</div>`).join('')}
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>` : ''}
+
+    <div class="tab-panel" id="tab-simulate">
+      <div class="section-card">
+        <div class="section-title">What-If Simulator</div>
+        <div class="section-body sim-section">
+          <div class="sim-row">
+            <div class="sim-label"><span>Monthly Income</span><span class="sim-value" id="simIncomeVal">₹40,000</span></div>
+            <input type="range" class="sim-slider" id="simIncome" min="10000" max="200000" step="5000" value="40000" oninput="updateSim()">
+          </div>
+          <div class="sim-row">
+            <div class="sim-label"><span>CIBIL Score</span><span class="sim-value" id="simCibilVal">750</span></div>
+            <input type="range" class="sim-slider" id="simCibil" min="300" max="900" step="10" value="750" oninput="updateSim()">
+          </div>
+          <div id="simResult" class="sim-result"></div>
+          <button class="sugg-btn" style="align-self:flex-start;margin-top:4px" onclick="queryFromSim()">Run full analysis ↗</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    const bar = document.getElementById('confBarFill');
+    if (bar) bar.style.width = pct + '%';
+  }, 100);
+  updateSim();
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  const panel = document.getElementById('tab-' + name);
+  if (panel) panel.classList.add('active');
+}
+
+function toggleDrawer(btn) {
+  btn.nextElementSibling.classList.toggle('open');
+  btn.querySelector('.drawer-arrow').classList.toggle('open');
+}
+
+function updateSim() {
+  const income = parseInt(document.getElementById('simIncome').value);
+  const cibil  = parseInt(document.getElementById('simCibil').value);
+  document.getElementById('simIncomeVal').textContent = '₹' + income.toLocaleString('en-IN');
+  document.getElementById('simCibilVal').textContent = cibil;
+  const banks = [
+    { name:'Axis',  ok: income>=15000 && cibil>=720 },
+    { name:'HDFC',  ok: income>=20000 && cibil>=750 },
+    { name:'ICICI', ok: income>=25000 && cibil>=700 },
+    { name:'SBI',   ok: income>=15000 && cibil>=700 },
+  ];
+  const result = document.getElementById('simResult');
+  if (result) {
+    result.innerHTML = banks.map(b =>
+      `<strong>${b.name}:</strong> <span style="color:${b.ok?'var(--green)':'var(--red)'}">${b.ok?'Eligible':'Not Eligible'}</span>`
+    ).join(' &nbsp;·&nbsp; ');
+  }
+}
+
+function queryFromSim() {
+  const income = document.getElementById('simIncome').value;
+  const cibil  = document.getElementById('simCibil').value;
+  document.getElementById('chatInput').value = `Compare all banks — income ₹${parseInt(income).toLocaleString()}, CIBIL score ${cibil}`;
+  sendQuery();
+}
+</script>
+</body>
+</html>

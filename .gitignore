@@ -1,0 +1,43 @@
+# Environment variables (NEVER commit API keys!)
+.env
+
+# Cache directories
+cache/
+__pycache__/
+*.pyc
+*.pyo
+
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python environment files
+.python-version
+
+# Logs
+*.log
+news_summarizer.log
+
+# Model cache
+.transformers_cache/
+models/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Python
+*.egg-info/
+dist/
+build/

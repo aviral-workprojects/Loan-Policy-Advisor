@@ -1,0 +1,40 @@
+Paisabazaar Personal Loan Guide - Market Comparison
+
+Personal loans in India: Key insights from comparison platform data (2024).
+
+MARKET OVERVIEW:
+- Average personal loan interest rate in India: 11-18% per annum
+- Average loan amount: ₹5-8 lakh
+- Common tenure: 24-48 months
+- Processing time: 1-7 business days
+
+BANK COMPARISON TABLE (Personal Loans):
+Bank         | Min Income | Min CIBIL | Rate Start | Max Amount
+-------------|------------|-----------|------------|----------
+Axis Bank    | ₹15,000   | 720       | 10.49%     | ₹40 lakh
+ICICI Bank   | ₹25,000   | 700       | 10.65%     | ₹50 lakh  
+HDFC Bank    | ₹20,000   | 750       | 10.50%     | ₹40 lakh
+SBI          | ₹15,000   | 700       | 11.05%     | ₹20 lakh
+Bajaj Finserv| ₹25,000   | 685       | 11.00%     | ₹40 lakh
+Kotak Mahindra| ₹20,000  | 700       | 10.99%     | ₹40 lakh
+
+KEY MARKET HEURISTICS:
+1. DTI Rule: Keep total EMI obligations below 40-50% of net monthly income
+2. Credit Score Tiers:
+   - 750+: Best rates, pre-approved offers
+   - 700-749: Approved with standard rates
+   - 650-699: Possible with conditions or higher rates
+   - Below 650: Rejection likely from major banks
+3. Income-to-Loan Ratio: Banks typically lend 10-20x monthly income
+4. Employer Category Matters: MNCs and PSUs get better terms
+
+ELIGIBILITY TIPS:
+- Adding a co-applicant can boost eligibility
+- Clearing existing EMIs before applying improves DTI
+- Salary account with target bank helps approval
+- Avoid multiple applications (reduces credit score)
+
+EMI CALCULATION GUIDE:
+- For ₹5 lakh @ 12% for 36 months: EMI = ₹16,607
+- For ₹10 lakh @ 11% for 48 months: EMI = ₹25,850
+- Golden rule: EMI should not exceed 40% of net salary

@@ -1,0 +1,56 @@
+RBI Guidelines on Personal Loans and Consumer Credit (2024)
+
+REGULATORY FRAMEWORK:
+The Reserve Bank of India (RBI) regulates personal lending through the Banking Regulation Act, 1949 and various Master Circulars.
+
+KEY REGULATIONS FOR PERSONAL LOANS:
+
+1. FAIR PRACTICES CODE:
+- Banks must disclose interest rate, fees, and all charges upfront
+- No hidden charges permitted
+- Standardized loan agreement required
+- Cooling-off period: 3 days after loan sanction to cancel without penalty
+
+2. INTEREST RATE REGULATIONS:
+- Banks must use transparent benchmark rates (MCLR/External Benchmark)
+- Internal rate of return must be disclosed
+- Interest on daily reducing balance basis
+- No pre-payment penalty on floating rate loans
+
+3. KYC COMPLIANCE:
+- Mandatory for all borrowers
+- Aadhaar-based e-KYC permitted
+- Video KYC for digital loans
+
+4. CREDIT BUREAU REQUIREMENTS:
+- Banks must report all loans to credit bureaus (CIBIL, Equifax, Experian, CRIF)
+- All lenders must check CIBIL before disbursing
+- Credit history must be checked for fraud prevention
+
+5. DIGITAL LENDING GUIDELINES (2022):
+- Loan disbursement only to borrower's bank account
+- No automatic credit limit increase without consent
+- Clear disclosure of APR (Annual Percentage Rate)
+- Data privacy compliance mandatory
+
+6. RECOVERY PRACTICES:
+- No harassment permitted in loan recovery
+- Recovery agents must have ID cards
+- Calling hours: 8 AM to 7 PM only
+- Borrowers can approach Banking Ombudsman for grievances
+
+7. CONSUMER PROTECTION:
+- Right to be heard — banks must acknowledge complaints within 5 days
+- Banking Ombudsman scheme for unresolved complaints
+- Right to know all charges before loan disbursement
+
+8. CIBIL SCORE GUIDELINES:
+- Banks are recommended to check credit reports from all 4 bureaus
+- 300-900 scale
+- RBI does not set minimum CIBIL requirements — each bank sets own policy
+
+COMPLIANCE GUARDRAILS FOR LOAN ADVISORS:
+- Must not guarantee loan approval
+- Must disclose all applicable rates and charges
+- Must not misrepresent bank terms
+- Must advise customers to read loan documents carefully

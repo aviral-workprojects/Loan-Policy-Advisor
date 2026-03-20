@@ -1,0 +1,46 @@
+bank: HDFC
+loan_type: personal
+logic: all
+
+rules:
+  - id: age_min
+    field: age
+    operator: ">="
+    value: 21
+    message: "Minimum age is 21 years"
+
+  - id: age_max
+    field: age
+    operator: "<="
+    value: 60
+    message: "Maximum age is 60 years"
+
+  - id: monthly_income
+    field: monthly_income
+    operator: ">="
+    value: 20000
+    message: "Minimum monthly income is ₹20,000"
+
+  - id: credit_score
+    field: credit_score
+    operator: ">="
+    value: 750
+    message: "Minimum CIBIL score is 750"
+
+  - id: employment_type
+    field: employment_type
+    operator: "in"
+    value: ["salaried", "self_employed", "professional"]
+    message: "Employment must be salaried, self-employed, or professional"
+
+  - id: work_experience
+    field: work_experience_months
+    operator: ">="
+    value: 12
+    message: "Minimum work experience is 12 months"
+
+  - id: dti_ratio
+    field: dti_ratio
+    operator: "<="
+    value: 0.50
+    message: "Debt-to-income ratio must not exceed 50%"

@@ -1,0 +1,40 @@
+BankBazaar Personal Loan Insights - 2024
+
+INTEREST RATE TRENDS:
+- RBI Repo Rate: 6.50% (as of mid-2024)
+- Banks typically price personal loans at Repo + 4-10%
+- MCLR-linked loans for existing customers
+
+FACTORS AFFECTING YOUR RATE:
+1. CIBIL Score (most impactful) — higher score = lower rate
+2. Income level — higher income = lower rate
+3. Employer reputation — top-tier MNC vs small company
+4. Existing banking relationship
+5. Loan amount and tenure
+6. Debt obligations (DTI)
+
+COMMON REJECTION REASONS:
+- CIBIL score below 650
+- High existing EMI obligations
+- Short employment history (<12 months)
+- Multiple recent credit inquiries
+- Discrepancies in documents
+- Income below bank threshold
+
+HOW TO IMPROVE APPROVAL CHANCES:
+- Maintain CIBIL score above 750
+- Keep DTI below 35%
+- Avoid job changes before applying
+- Reduce existing debt first
+- Apply to one bank at a time
+
+FINTECH vs TRADITIONAL BANKS:
+- Fintechs (KreditBee, MoneyTap): Accept lower scores, higher rates 24-36%
+- Traditional banks: Stricter criteria, lower rates 10-18%
+- NBFCs: Middle ground 15-24%
+
+PROCESSING FEE GUIDE:
+- SBI: 1.5% (waived for existing customers)
+- HDFC: Up to 2.5%
+- ICICI: 0.5% to 2.5%
+- Axis: Up to 2%

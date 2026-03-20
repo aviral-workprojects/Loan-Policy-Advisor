@@ -1,0 +1,32 @@
+# Core framework
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.7.0
+
+# LLM providers — install the one matching your LLM_PROVIDER
+groq>=0.9.0                 # recommended (fast, generous free tier)
+# anthropic>=0.28.0         # uncomment if LLM_PROVIDER=anthropic
+# openai>=1.30.0            # uncomment if LLM_PROVIDER=openai
+
+# Embeddings & Vector Store
+sentence-transformers>=3.0.0
+faiss-cpu>=1.8.0
+numpy>=1.26.0
+
+# Rules
+pyyaml>=6.0.1
+
+# PDF reading (only needed if you have .pdf files in data/ folders)
+pdfplumber>=0.11.0          # better table/text extraction
+# pypdf>=4.2.0              # lighter alternative
+
+# Web search fallback (optional)
+# tavily-python>=0.3.3
+# requests>=2.32.0          # for SERP API
+
+# Utilities
+python-dotenv>=1.0.0
+
+# NVIDIA Reranker (via API Catalog — no extra lib needed, uses requests)
+# requests is already a standard dep; add this only for LangChain integration:
+# langchain-nvidia-ai-endpoints>=0.3.0   # optional: NVIDIARerank LangChain wrapper

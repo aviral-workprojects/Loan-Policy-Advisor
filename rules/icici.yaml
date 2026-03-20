@@ -1,0 +1,40 @@
+bank: ICICI
+loan_type: personal
+logic: all
+
+rules:
+  - id: age_min
+    field: age
+    operator: ">="
+    value: 23
+    message: "Minimum age is 23 years"
+
+  - id: age_max
+    field: age
+    operator: "<="
+    value: 58
+    message: "Maximum age is 58 years"
+
+  - id: monthly_income
+    field: monthly_income
+    operator: ">="
+    value: 25000
+    message: "Minimum monthly income is ₹25,000"
+
+  - id: credit_score
+    field: credit_score
+    operator: ">="
+    value: 700
+    message: "Minimum CIBIL score is 700"
+
+  - id: employment_type
+    field: employment_type
+    operator: "in"
+    value: ["salaried", "self_employed"]
+    message: "Employment must be salaried or self-employed"
+
+  - id: work_experience
+    field: work_experience_months
+    operator: ">="
+    value: 24
+    message: "Minimum work experience is 24 months"

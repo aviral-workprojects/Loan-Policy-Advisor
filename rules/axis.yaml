@@ -1,0 +1,40 @@
+bank: Axis
+loan_type: personal
+logic: all
+
+rules:
+  - id: age_min
+    field: age
+    operator: ">="
+    value: 21
+    message: "Minimum age is 21 years"
+
+  - id: age_max
+    field: age
+    operator: "<="
+    value: 60
+    message: "Maximum age is 60 years"
+
+  - id: monthly_income
+    field: monthly_income
+    operator: ">="
+    value: 15000
+    message: "Minimum monthly income is ₹15,000"
+
+  - id: credit_score
+    field: credit_score
+    operator: ">="
+    value: 720
+    message: "Minimum CIBIL score is 720"
+
+  - id: employment_type
+    field: employment_type
+    operator: "in"
+    value: ["salaried", "self_employed", "professional"]
+    message: "Employment type must be salaried, self-employed, or professional"
+
+  - id: work_experience
+    field: work_experience_months
+    operator: ">="
+    value: 12
+    message: "Minimum work experience is 12 months"
