@@ -1,795 +1,1159 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Loan Policy Advisor</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LoanAdvisor — AI Loan Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Reset & Variables ──────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --navy: #0a0f1e;
-    --navy-2: #111827;
-    --navy-3: #1a2235;
-    --navy-4: #1f2d45;
-    --navy-5: #243356;
-    --border: rgba(99,139,210,0.15);
-    --border-bright: rgba(99,139,210,0.35);
-    --text-1: #e8edf8;
-    --text-2: #8fa3c8;
-    --text-3: #5a7099;
-    --accent: #4f9cf9;
-    --accent-dim: rgba(79,156,249,0.12);
-    --amber: #f5a623;
-    --amber-dim: rgba(245,166,35,0.12);
-    --green: #22d47a;
-    --green-dim: rgba(34,212,122,0.1);
-    --red: #f5455a;
-    --red-dim: rgba(245,69,90,0.1);
-    --mono: 'IBM Plex Mono', monospace;
-    --display: 'Syne', sans-serif;
-    --body: 'DM Sans', sans-serif;
-    --r: 6px;
-    --r-lg: 10px;
-  }
+:root {
+  --bg:           #0d0f11;
+  --bg-2:         #13161a;
+  --bg-3:         #1a1e24;
+  --bg-4:         #1f252d;
+  --border:       rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.14);
+  --text:         #e8eaed;
+  --text-2:       #9aa0a8;
+  --text-3:       #5f6368;
+  --accent:       #4f8ef7;
+  --accent-dim:   rgba(79,142,247,0.15);
+  --accent-glow:  rgba(79,142,247,0.3);
+  --green:        #34a853;
+  --green-dim:    rgba(52,168,83,0.12);
+  --red:          #ea4335;
+  --red-dim:      rgba(234,67,53,0.12);
+  --amber:        #fbbc04;
+  --amber-dim:    rgba(251,188,4,0.12);
+  --radius:       12px;
+  --radius-sm:    8px;
+  --shadow:       0 4px 24px rgba(0,0,0,0.4);
+  --font:         'DM Sans', sans-serif;
+  --mono:         'DM Mono', monospace;
+}
 
-  html, body {
-    height: 100%;
-  }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
 
-  body {
-    font-family: var(--body);
-    background: var(--navy);
-    color: var(--text-1);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+/* ── Layout ─────────────────────────────────────────────────── */
+.app {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  grid-template-rows: 100vh;
+  overflow: hidden;
+}
 
-  /* === TOP BAR === */
-  .topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 24px;
-    background: var(--navy-2);
-    border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; z-index: 100;
-  }
-  .topbar-logo { display: flex; align-items: center; gap: 10px; }
-  .logo-mark {
-    width: 28px; height: 28px; border-radius: 6px;
-    background: linear-gradient(135deg, #4f9cf9 0%, #1a5fab 100%);
-    display: flex; align-items: center; justify-content: center;
-    font-family: var(--mono); font-size: 11px; font-weight: 500; color: #fff;
-  }
-  .logo-text { font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
-  .logo-text span { color: var(--accent); }
-  .topbar-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); font-family: var(--mono); }
-  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.sidebar {
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px;
+  overflow-y: auto;
+  gap: 8px;
+}
 
-  /* === LAYOUT === */
-  .app-layout {
-    display: grid;
-    grid-template-columns: 1fr 420px;
-    height: calc(100vh - 53px);
-  }
-  @media (max-width: 900px) {
-    .app-layout { grid-template-columns: 1fr; height: auto; }
-    .result-panel { border-left: none; border-top: 1px solid var(--border); max-height: 60vh; overflow-y: auto; }
-  }
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+.logo-icon {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: grid; place-items: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.logo-text {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+.logo-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 400;
+}
 
-  /* === CHAT PANEL === */
-  .chat-panel {
-    display: flex; flex-direction: column;
-    border-right: 1px solid var(--border);
-  }
-  .chat-header {
-    padding: 16px 20px 12px;
-    border-bottom: 1px solid var(--border);
-    background: var(--navy-2);
-  }
-  .chat-header h2 { font-family: var(--display); font-size: 13px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 1.2px; }
-  .chat-messages {
-    flex: 1; overflow-y: auto; padding: 20px;
-    display: flex; flex-direction: column; gap: 14px;
-    scrollbar-width: thin; scrollbar-color: var(--navy-4) transparent;
-  }
+.new-chat-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(79,142,247,0.25);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+}
+.new-chat-btn:hover { background: rgba(79,142,247,0.22); border-color: var(--accent); }
 
-  .msg { display: flex; gap: 10px; animation: msgIn 0.25s ease; }
-  .msg.user { flex-direction: row-reverse; }
-  @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  .msg-avatar {
-    width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 600; font-family: var(--mono);
-  }
-  .msg-avatar.sys { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(79,156,249,0.25); }
-  .msg-avatar.usr { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.25); }
-  .msg-bubble {
-    max-width: 82%;
-    padding: 10px 14px;
-    border-radius: var(--r-lg);
-    font-size: 13.5px; line-height: 1.6;
-  }
-  .msg.sys .msg-bubble { background: var(--navy-3); border: 1px solid var(--border); color: var(--text-1); border-radius: 2px 10px 10px 10px; }
-  .msg.user .msg-bubble { background: var(--navy-5); border: 1px solid rgba(99,139,210,0.25); color: var(--text-1); border-radius: 10px 2px 10px 10px; }
-  .msg-time { font-size: 10px; color: var(--text-3); font-family: var(--mono); margin-top: 4px; }
-  .msg.user .msg-time { text-align: right; }
+.sidebar-section-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-3);
+  padding: 12px 12px 4px;
+}
 
-  .typing-dots { display: flex; align-items: center; gap: 3px; padding: 4px 0; }
-  .typing-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--text-3); animation: dot 1.2s infinite; }
-  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes dot { 0%,80%,100%{opacity:0.3;transform:scale(0.8)} 40%{opacity:1;transform:scale(1.1)} }
+.sample-query {
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-2);
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  line-height: 1.4;
+}
+.sample-query:hover {
+  background: var(--bg-3);
+  border-color: var(--border);
+  color: var(--text);
+}
+.sample-query .sq-icon { margin-right: 8px; opacity: 0.6; }
 
-  .suggestions { padding: 8px 20px 14px; display: flex; flex-wrap: wrap; gap: 6px; }
-  .sugg-btn {
-    padding: 5px 12px; border-radius: 20px; font-size: 12px;
-    background: var(--navy-3); border: 1px solid var(--border-bright);
-    color: var(--accent); cursor: pointer; font-family: var(--body);
-    transition: all 0.15s;
-  }
-  .sugg-btn:hover { background: var(--accent-dim); border-color: var(--accent); }
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
 
-  .chat-input-area { padding: 12px 16px; border-top: 1px solid var(--border); background: var(--navy-2); }
-  .input-row { display: flex; gap: 8px; align-items: flex-end; }
-  .chat-input {
-    flex: 1; background: var(--navy-3); border: 1px solid var(--border-bright);
-    border-radius: var(--r-lg); padding: 10px 14px; color: var(--text-1);
-    font-family: var(--body); font-size: 13.5px; resize: none; min-height: 42px; max-height: 100px;
-    outline: none; transition: border-color 0.15s;
-  }
-  .chat-input:focus { border-color: var(--accent); }
-  .chat-input::placeholder { color: var(--text-3); }
-  .send-btn {
-    width: 42px; height: 42px; border-radius: var(--r-lg); background: var(--accent);
-    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s; flex-shrink: 0;
-  }
-  .send-btn:hover { background: #3d8ce8; transform: scale(1.03); }
-  .send-btn:disabled { background: var(--navy-4); cursor: not-allowed; transform: none; }
-  .send-btn svg { width: 16px; height: 16px; fill: none; stroke: #fff; stroke-width: 2.2; }
+.sidebar-bottom {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  flex-shrink: 0;
+}
+.status-dot.loading {
+  animation: pulse 1.2s ease-in-out infinite;
+  background: var(--amber);
+  box-shadow: 0 0 6px var(--amber);
+}
 
-  /* === RESULT PANEL === */
-  .result-panel {
-    background: var(--navy-2);
-    display: flex; flex-direction: column;
-    overflow: hidden;
-  }
-  .result-header {
-    padding: 16px 20px 12px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .result-header h2 { font-family: var(--display); font-size: 13px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 1.2px; }
-  .result-scroll { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; scrollbar-width: thin; scrollbar-color: var(--navy-4) transparent; }
+/* ── Main area ───────────────────────────────────────────────── */
+.main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
 
-  .empty-state {
-    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 12px; color: var(--text-3); padding: 40px 20px; text-align: center;
-  }
-  .empty-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--navy-3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
-  .empty-icon svg { width: 22px; height: 22px; stroke: var(--text-3); fill: none; stroke-width: 1.5; }
-  .empty-state p { font-size: 13px; line-height: 1.6; max-width: 200px; }
+/* ── Header ─────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+.header-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+.header-chips {
+  display: flex;
+  gap: 8px;
+}
+.bank-chip {
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 11.5px;
+  font-weight: 500;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.bank-chip:hover, .bank-chip.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
 
-  /* DECISION CARD */
-  .decision-card {
-    border-radius: var(--r-lg); overflow: hidden;
-    border: 1px solid var(--border);
-    animation: cardIn 0.35s ease;
-  }
-  @keyframes cardIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
-  .decision-header {
-    padding: 14px 16px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .decision-header.eligible { background: rgba(34,212,122,0.08); border-bottom: 1px solid rgba(34,212,122,0.2); }
-  .decision-header.not-eligible { background: rgba(245,69,90,0.08); border-bottom: 1px solid rgba(245,69,90,0.2); }
-  .decision-header.partial { background: rgba(245,166,35,0.08); border-bottom: 1px solid rgba(245,166,35,0.2); }
-  .decision-header.insufficient { background: var(--navy-3); border-bottom: 1px solid var(--border); }
+/* ── Chat area ───────────────────────────────────────────────── */
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 0;
+  scroll-behavior: smooth;
+}
+.chat-area::-webkit-scrollbar { width: 4px; }
+.chat-area::-webkit-scrollbar-track { background: transparent; }
+.chat-area::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 2px; }
 
-  .decision-verdict { display: flex; align-items: center; gap: 10px; }
-  .verdict-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-  .verdict-icon.eligible { background: var(--green-dim); border: 1px solid rgba(34,212,122,0.3); }
-  .verdict-icon.not-eligible { background: var(--red-dim); border: 1px solid rgba(245,69,90,0.3); }
-  .verdict-icon.partial { background: var(--amber-dim); border: 1px solid rgba(245,166,35,0.3); }
-  .verdict-text h3 { font-family: var(--display); font-size: 15px; font-weight: 700; }
-  .verdict-text h3.eligible { color: var(--green); }
-  .verdict-text h3.not-eligible { color: var(--red); }
-  .verdict-text h3.partial { color: var(--amber); }
-  .verdict-text p { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-top: 2px; }
+/* ── Empty state ─────────────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 40px 24px;
+  text-align: center;
+  gap: 20px;
+}
+.empty-icon {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  border-radius: 16px;
+  display: grid; place-items: center;
+  font-size: 26px;
+  box-shadow: 0 0 40px rgba(79,142,247,0.25);
+}
+.empty-title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+.empty-sub {
+  font-size: 14.5px;
+  color: var(--text-2);
+  max-width: 420px;
+  line-height: 1.6;
+}
+.empty-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  max-width: 500px;
+  margin-top: 8px;
+}
+.empty-card {
+  padding: 14px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.empty-card:hover {
+  background: var(--bg-3);
+  border-color: var(--border-hover);
+  color: var(--text);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.empty-card strong {
+  display: block;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
 
-  .confidence-block { text-align: right; }
-  .confidence-block .conf-label { font-size: 10px; color: var(--text-3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.8px; }
-  .confidence-block .conf-val { font-size: 20px; font-weight: 700; font-family: var(--mono); margin-top: 2px; }
-  .confidence-block .conf-val.eligible { color: var(--green); }
-  .confidence-block .conf-val.not-eligible { color: var(--red); }
-  .confidence-block .conf-val.partial { color: var(--amber); }
+/* ── Messages ────────────────────────────────────────────────── */
+.message-wrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 28px;
+  width: 100%;
+}
 
-  .decision-body { padding: 14px 16px; background: var(--navy-3); display: flex; flex-direction: column; gap: 12px; }
+.msg {
+  display: flex;
+  gap: 14px;
+  padding: 20px 0;
+  animation: fadeIn 0.25s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
 
-  .conf-bar-wrap { display: flex; flex-direction: column; gap: 5px; }
-  .conf-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); font-family: var(--mono); }
-  .conf-bar-track { height: 4px; background: var(--navy-4); border-radius: 2px; overflow: hidden; }
-  .conf-bar-fill { height: 100%; border-radius: 2px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
-  .conf-bar-fill.eligible { background: var(--green); }
-  .conf-bar-fill.not-eligible { background: var(--red); }
-  .conf-bar-fill.partial { background: var(--amber); }
+.msg-avatar {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: grid; place-items: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.msg.user .msg-avatar { background: var(--bg-4); color: var(--text-2); }
+.msg.assistant .msg-avatar {
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(79,142,247,0.3);
+}
 
-  .summary-text { font-size: 13px; color: var(--text-2); line-height: 1.6; padding: 10px 12px; background: var(--navy-2); border-radius: var(--r); border: 1px solid var(--border); }
+.msg-body { flex: 1; min-width: 0; }
 
-  .section-card { background: var(--navy-3); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; animation: cardIn 0.35s ease; }
-  .section-title { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 1.2px; font-family: var(--mono); display: flex; align-items: center; gap: 6px; }
-  .section-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 7px; }
+.msg.user .msg-content {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 14.5px;
+  color: var(--text);
+  display: inline-block;
+  max-width: 80%;
+}
 
-  .rule-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: var(--r); border: 1px solid transparent; font-size: 12.5px; }
-  .rule-item.pass { background: rgba(34,212,122,0.05); border-color: rgba(34,212,122,0.15); }
-  .rule-item.fail { background: rgba(245,69,90,0.05); border-color: rgba(245,69,90,0.15); }
-  .rule-item.miss { background: rgba(245,166,35,0.05); border-color: rgba(245,166,35,0.15); }
-  .rule-icon { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; }
-  .rule-icon.pass { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,212,122,0.4); }
-  .rule-icon.fail { background: var(--red-dim); color: var(--red); border: 1px solid rgba(245,69,90,0.4); }
-  .rule-icon.miss { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.4); }
-  .rule-text { color: var(--text-1); flex: 1; line-height: 1.5; }
+.msg.assistant .msg-content {
+  font-size: 14.5px;
+  color: var(--text);
+  line-height: 1.7;
+}
 
-  .bank-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .bank-table th { padding: 8px 10px; text-align: left; color: var(--text-3); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500; border-bottom: 1px solid var(--border); }
-  .bank-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: middle; }
-  .bank-table tr:last-child td { border-bottom: none; }
-  .bank-table tr:hover td { background: rgba(79,156,249,0.04); }
-  .bank-name { font-weight: 500; color: var(--text-1); font-family: var(--body); }
-  .badge-elig { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-family: var(--mono); font-weight: 500; }
-  .badge-elig.yes { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,212,122,0.3); }
-  .badge-elig.no { background: var(--red-dim); color: var(--red); border: 1px solid rgba(245,69,90,0.3); }
-  .badge-elig.partial { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
+/* ── Decision badge ──────────────────────────────────────────── */
+.decision-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  border: 1px solid;
+}
+.decision-banner.eligible { background: var(--green-dim); border-color: rgba(52,168,83,0.3); color: #4caf50; }
+.decision-banner.partial  { background: var(--amber-dim); border-color: rgba(251,188,4,0.3);  color: var(--amber); }
+.decision-banner.rejected { background: var(--red-dim);   border-color: rgba(234,67,53,0.3);  color: #ef5350; }
+.decision-banner.unknown  { background: var(--bg-3);      border-color: var(--border);         color: var(--text-2); }
 
-  .score-bar { display: flex; align-items: center; gap: 6px; }
-  .score-track { height: 4px; width: 60px; background: var(--navy-4); border-radius: 2px; overflow: hidden; }
-  .score-fill { height: 100%; border-radius: 2px; background: var(--accent); }
+/* ── Summary text ────────────────────────────────────────────── */
+.summary-text {
+  font-size: 14.5px;
+  color: var(--text);
+  line-height: 1.75;
+  margin-bottom: 20px;
+}
 
-  .sources-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; }
-  .source-badge { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-family: var(--mono); font-weight: 500; }
-  .source-badge.bank { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(79,156,249,0.25); }
-  .source-badge.reg { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.25); }
-  .source-badge.agg { background: rgba(139,92,246,0.1); color: #a78bfa; border: 1px solid rgba(139,92,246,0.25); }
+/* ── Bank cards ──────────────────────────────────────────────── */
+.banks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.bank-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  transition: border-color 0.2s;
+}
+.bank-card.eligible-card { border-color: rgba(52,168,83,0.3); }
+.bank-card.rejected-card { border-color: rgba(234,67,53,0.2); }
+.bank-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.bank-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.bank-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+.badge-yes { background: var(--green-dim); color: #4caf50; }
+.badge-no  { background: var(--red-dim);   color: #ef5350; }
+.bank-rate {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent);
+  font-family: var(--mono);
+  letter-spacing: -0.5px;
+}
+.bank-score-bar {
+  margin-top: 10px;
+  height: 3px;
+  background: var(--bg-4);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.bank-score-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+.fill-green { background: var(--green); }
+.fill-red   { background: var(--red); }
+.fill-amber { background: var(--amber); }
+.bank-score-label {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 6px;
+}
 
-  .drawer-toggle { width: 100%; padding: 10px 14px; background: none; border: none; color: var(--text-2); font-size: 12.5px; font-family: var(--body); cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
-  .drawer-toggle:hover { color: var(--text-1); }
-  .drawer-arrow { font-size: 10px; transition: transform 0.2s; }
-  .drawer-arrow.open { transform: rotate(180deg); }
-  .drawer-content { padding: 0 14px 12px; font-size: 12.5px; color: var(--text-2); line-height: 1.7; display: none; }
-  .drawer-content.open { display: block; }
-  .drawer-content p { margin-bottom: 8px; }
+/* ── Expandable sections ─────────────────────────────────────── */
+.expand-section {
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.expand-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: pointer;
+  background: var(--bg-2);
+  transition: background 0.15s;
+  user-select: none;
+}
+.expand-header:hover { background: var(--bg-3); }
+.expand-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+.expand-icon {
+  font-size: 12px;
+  color: var(--text-3);
+  transition: transform 0.2s;
+}
+.expand-icon.open { transform: rotate(180deg); }
+.expand-body {
+  display: none;
+  padding: 14px 16px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  font-size: 13.5px;
+  color: var(--text-2);
+  line-height: 1.7;
+}
+.expand-body.open { display: block; }
 
-  .sim-section { display: flex; flex-direction: column; gap: 12px; }
-  .sim-row { display: flex; flex-direction: column; gap: 6px; }
-  .sim-label { display: flex; justify-content: space-between; align-items: center; }
-  .sim-label span:first-child { font-size: 12px; color: var(--text-2); }
-  .sim-value { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--accent); }
-  .sim-slider { width: 100%; accent-color: var(--accent); cursor: pointer; }
-  .sim-result { padding: 10px 12px; border-radius: var(--r); background: var(--navy-2); border: 1px solid var(--border); font-size: 12px; color: var(--text-2); font-family: var(--mono); margin-top: 4px; }
-  .sim-result strong { color: var(--text-1); }
+/* ── Rule list ───────────────────────────────────────────────── */
+.rule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.rule-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.rule-item .ri { flex-shrink: 0; margin-top: 2px; }
 
-  .skel { background: linear-gradient(90deg, var(--navy-3) 25%, var(--navy-4) 50%, var(--navy-3) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: var(--r); }
-  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  .skel-card { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-  .skel-h { height: 20px; }
-  .skel-p { height: 12px; }
-  .skel-bar { height: 6px; }
+/* ── Recommendations ─────────────────────────────────────────── */
+.recs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.rec-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.rec-num {
+  flex-shrink: 0;
+  width: 20px; height: 20px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(79,142,247,0.25);
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 1px;
+}
 
-  .rec-item { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--text-2); padding: 7px 10px; border-radius: var(--r); background: var(--navy-2); border: 1px solid var(--border); }
-  .rec-bullet { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 5px; }
+/* ── Sources ─────────────────────────────────────────────────── */
+.sources-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.source-chip {
+  padding: 3px 9px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  font-family: var(--mono);
+}
 
-  .tab-row { display: flex; gap: 2px; padding: 10px 14px 0; background: var(--navy-2); border-bottom: 1px solid var(--border); }
-  .tab-btn { padding: 6px 14px; font-size: 12px; background: none; border: none; color: var(--text-3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; font-family: var(--body); transition: all 0.15s; }
-  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab-btn:hover:not(.active) { color: var(--text-2); }
-  .tab-panel { display: none; }
-  .tab-panel.active { display: flex; flex-direction: column; gap: 14px; padding: 14px 0 0; }
+/* ── Meta footer ─────────────────────────────────────────────── */
+.msg-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.meta-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.meta-chip span { font-family: var(--mono); color: var(--text-2); }
+.confidence-bar {
+  width: 48px; height: 3px;
+  background: var(--bg-4);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.confidence-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+}
 
-  .error-block { padding: 12px 14px; background: rgba(245,69,90,0.08); border: 1px solid rgba(245,69,90,0.2); border-radius: var(--r-lg); font-size: 13px; color: var(--red); }
+/* ── Thinking indicator ──────────────────────────────────────── */
+.thinking {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-3);
+  font-size: 13.5px;
+  padding: 16px 0;
+}
+.thinking-dots {
+  display: flex;
+  gap: 4px;
+}
+.thinking-dots span {
+  width: 5px; height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: bounce 1.2s ease-in-out infinite;
+  opacity: 0.7;
+}
+.thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30%            { transform: translateY(-5px); opacity: 1; }
+}
+
+/* ── Error state ─────────────────────────────────────────────── */
+.error-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--red-dim);
+  border: 1px solid rgba(234,67,53,0.3);
+  border-radius: var(--radius);
+  font-size: 13.5px;
+  color: #ef5350;
+}
+
+/* ── Input area ──────────────────────────────────────────────── */
+.input-area {
+  padding: 16px 28px 24px;
+  flex-shrink: 0;
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+}
+.input-wrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+}
+.input-box {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--border-hover);
+  border-radius: 14px;
+  padding: 14px 56px 14px 18px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14.5px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  min-height: 54px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.input-box::placeholder { color: var(--text-3); }
+.input-box:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.send-btn {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: all 0.15s;
+  color: #fff;
+  font-size: 14px;
+}
+.send-btn:hover { background: #6ba3fa; transform: scale(1.05); }
+.send-btn:disabled { background: var(--bg-4); cursor: not-allowed; color: var(--text-3); transform: none; }
+
+.input-hint {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-3);
+  margin-top: 10px;
+}
+
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 2px; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .input-area, .message-wrapper, .header { padding-left: 16px; padding-right: 16px; }
+  .empty-cards { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="topbar-logo">
-    <div class="logo-mark">AI</div>
-    <div class="logo-text">Loan<span>Advisor</span></div>
-  </div>
-  <div class="topbar-status">
-    <div class="status-dot"></div>
-    <span>System active · v2.1</span>
-  </div>
-</div>
-
-<div class="app-layout">
-
-  <!-- CHAT PANEL -->
-  <div class="chat-panel">
-    <div class="chat-header">
-      <h2>Advisory Console</h2>
-    </div>
-    <div class="chat-messages" id="chatMessages">
-      <div class="msg sys">
-        <div class="msg-avatar sys">AI</div>
-        <div>
-          <div class="msg-bubble">
-            Hello! I'm your loan policy advisor. I can check your eligibility, compare banks, and explain decisions clearly. What would you like to know?
-          </div>
-          <div class="msg-time">Just now</div>
-        </div>
+<div class="app">
+  <!-- ── Sidebar ──────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🏦</div>
+      <div>
+        <div class="logo-text">LoanAdvisor</div>
+        <div class="logo-sub">AI · India</div>
       </div>
     </div>
-    <div class="suggestions" id="suggestions">
-      <button class="sugg-btn" onclick="useSuggestion('Check my eligibility for Axis Bank — I earn ₹40,000/month, age 28, CIBIL score 750, salaried for 2 years')">Check eligibility</button>
-      <button class="sugg-btn" onclick="useSuggestion('Compare personal loans from HDFC and SBI — I earn ₹35,000/month, CIBIL 720, age 30')">Compare banks</button>
-      <button class="sugg-btn" onclick="useSuggestion('What CIBIL score do I need for ICICI personal loan?')">CIBIL requirements</button>
-      <button class="sugg-btn" onclick="useSuggestion('What documents do I need for a personal loan?')">Documents needed</button>
+
+    <button class="new-chat-btn" onclick="clearChat()">
+      <span>✦</span> New conversation
+    </button>
+
+    <div class="sidebar-section-label">Try asking</div>
+
+    <div class="sample-query" onclick="sendSample(this.dataset.q)" data-q="Am I eligible for Axis Bank personal loan? I'm 28, earn ₹40,000/month, CIBIL 750, salaried 2 years.">
+      <span class="sq-icon">✦</span> Eligibility with salary & CIBIL
     </div>
-    <div class="chat-input-area">
-      <div class="input-row">
-        <textarea class="chat-input" id="chatInput" placeholder="Ask about loan eligibility, rates, requirements…" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-        <button class="send-btn" id="sendBtn" onclick="sendQuery()" title="Send">
-          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    <div class="sample-query" onclick="sendSample(this.dataset.q)" data-q="Compare personal loan interest rates across Axis, HDFC, ICICI and SBI for a salaried employee.">
+      <span class="sq-icon">⟐</span> Compare bank rates
+    </div>
+    <div class="sample-query" onclick="sendSample(this.dataset.q)" data-q="What is the minimum CIBIL score required for HDFC personal loan?">
+      <span class="sq-icon">◈</span> HDFC CIBIL requirement
+    </div>
+    <div class="sample-query" onclick="sendSample(this.dataset.q)" data-q="I earn ₹25,000/month, age 24, CIBIL 680. Which banks will approve my personal loan?">
+      <span class="sq-icon">◎</span> Low income applicant check
+    </div>
+    <div class="sample-query" onclick="sendSample(this.dataset.q)" data-q="Self-employed, income ₹60,000/month, CIBIL 720, age 35. SBI personal loan eligibility?">
+      <span class="sq-icon">◈</span> Self-employed eligibility
+    </div>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">Banks covered</div>
+
+    <div class="sample-query" style="cursor:default; display:flex; gap:8px; flex-wrap:wrap; padding:8px 12px;">
+      <span style="font-size:12px;color:var(--text-3);background:var(--bg-3);padding:3px 9px;border-radius:100px;border:1px solid var(--border)">Axis</span>
+      <span style="font-size:12px;color:var(--text-3);background:var(--bg-3);padding:3px 9px;border-radius:100px;border:1px solid var(--border)">HDFC</span>
+      <span style="font-size:12px;color:var(--text-3);background:var(--bg-3);padding:3px 9px;border-radius:100px;border:1px solid var(--border)">ICICI</span>
+      <span style="font-size:12px;color:var(--text-3);background:var(--bg-3);padding:3px 9px;border-radius:100px;border:1px solid var(--border)">SBI</span>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="status-pill">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">API connected</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────── -->
+  <main class="main">
+    <div class="header">
+      <div class="header-title">Personal Loan Intelligence</div>
+      <div class="header-chips">
+        <div class="bank-chip active" onclick="toggleBank(this,'Axis')">Axis</div>
+        <div class="bank-chip active" onclick="toggleBank(this,'HDFC')">HDFC</div>
+        <div class="bank-chip active" onclick="toggleBank(this,'ICICI')">ICICI</div>
+        <div class="bank-chip active" onclick="toggleBank(this,'SBI')">SBI</div>
+      </div>
+    </div>
+
+    <div class="chat-area" id="chatArea">
+      <!-- Empty state -->
+      <div class="message-wrapper" id="emptyState">
+        <div class="empty-state">
+          <div class="empty-icon">🏦</div>
+          <div class="empty-title">What can I help you with?</div>
+          <div class="empty-sub">Ask about loan eligibility, compare interest rates, or check requirements across India's leading banks.</div>
+          <div class="empty-cards">
+            <div class="empty-card" onclick="sendSample('Am I eligible? I earn ₹40,000/month, CIBIL 750, age 28, salaried.')">
+              <strong>✦ Check eligibility</strong>
+              "Am I eligible with my salary and CIBIL score?"
+            </div>
+            <div class="empty-card" onclick="sendSample('Compare personal loan rates for Axis, HDFC, ICICI and SBI.')">
+              <strong>⟐ Compare banks</strong>
+              "Which bank offers the best rate for my profile?"
+            </div>
+            <div class="empty-card" onclick="sendSample('What CIBIL score do I need for a personal loan?')">
+              <strong>◈ Understand criteria</strong>
+              "What are the minimum requirements?"
+            </div>
+            <div class="empty-card" onclick="sendSample('How do I improve my chances of loan approval?')">
+              <strong>◎ Get advice</strong>
+              "How can I improve my loan eligibility?"
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Messages injected here -->
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrapper">
+        <textarea
+          id="queryInput"
+          class="input-box"
+          placeholder="Ask about loan eligibility, interest rates, or bank requirements…"
+          rows="1"
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendQuery()" title="Send (Enter)">
+          ↑
         </button>
       </div>
+      <div class="input-hint">Press Enter to send · Shift+Enter for new line</div>
     </div>
-  </div>
-
-  <!-- RESULT PANEL -->
-  <div class="result-panel">
-    <div class="result-header">
-      <h2>Decision Intelligence</h2>
-    </div>
-    <div class="result-scroll" id="resultPanel">
-      <div class="empty-state" id="emptyState">
-        <div class="empty-icon">
-          <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
-        </div>
-        <p>Submit a query to see your eligibility decision and analysis</p>
-      </div>
-    </div>
-  </div>
-
+  </main>
 </div>
 
 <script>
-const state = { messages: [], loading: false, lastResponse: null };
+const API_BASE = 'http://localhost:8000';
+let isLoading  = false;
+let msgIndex   = 0;
 
-function mockResponse(query) {
-  const q = query.toLowerCase();
-  const isAxis = q.includes('axis');
-  const isSBI  = q.includes('sbi');
-  const isHDFC = q.includes('hdfc');
-  const isICICI= q.includes('icici');
-  const isComp = q.includes('compare') || (isHDFC && isSBI) || (isAxis && isICICI);
-
-  const income = (() => {
-    const m = q.match(/₹?([\d,]+)/);
-    if (m) return parseInt(m[1].replace(',',''));
-    return 40000;
-  })();
-  const cibil = (() => {
-    const m = q.match(/\b(cibil|score)\s*[:\s]+?(\d{3})\b/) || q.match(/\b(\d{3})\s*(cibil|score)\b/);
-    if (m) return parseInt(m[2] || m[1]);
-    const m2 = q.match(/\b(6\d\d|7\d\d|8\d\d)\b/);
-    return m2 ? parseInt(m2[1]) : 750;
-  })();
-
-  const incomeOk = income >= 15000;
-  const cibilOk  = cibil  >= 720;
-  const eligible = incomeOk && cibilOk;
-  const confidence = eligible ? (0.78 + Math.random()*0.18) : (0.62 + Math.random()*0.2);
-
-  if (isComp || (!isAxis && !isSBI && !isHDFC && !isICICI && q.includes('compare'))) {
-    const banks = [
-      { name:'Axis',  elig: income>=15000&&cibil>=720, rate:'10.49%', minCibil:720, minIncome:15000 },
-      { name:'HDFC',  elig: income>=20000&&cibil>=750, rate:'10.50%', minCibil:750, minIncome:20000 },
-      { name:'ICICI', elig: income>=25000&&cibil>=700, rate:'10.65%', minCibil:700, minIncome:25000 },
-      { name:'SBI',   elig: income>=15000&&cibil>=700, rate:'11.05%', minCibil:700, minIncome:15000  },
-    ];
-    const eligible_banks = banks.filter(b => b.elig);
-    return {
-      decision: eligible_banks.length > 0 ? 'Partially Eligible' : 'Not Eligible',
-      summary: `Found ${eligible_banks.length} eligible banks based on your profile. ${eligible_banks.length > 0 ? eligible_banks.map(b=>b.name).join(', ') + ' can process your application.' : 'Consider improving your CIBIL score or income.'}`,
-      detailed_explanation: `Your profile (income ₹${income.toLocaleString()}, CIBIL ${cibil}) was evaluated across all major banks. Axis Bank and SBI have the lowest entry thresholds, while HDFC demands the highest CIBIL score at 750.`,
-      confidence: eligible_banks.length/banks.length * 0.8 + 0.1,
-      rule_results: banks.map(b => ({
-        bank: b.name, eligible: b.elig,
-        passed: [
-          ...(income>=b.minIncome ? [`Monthly income ₹${income.toLocaleString()} ≥ ₹${b.minIncome.toLocaleString()} ✓`] : []),
-          ...(cibil>=b.minCibil   ? [`CIBIL ${cibil} ≥ ${b.minCibil} ✓`] : []),
-        ],
-        failed: [
-          ...(income<b.minIncome ? [`Monthly income ₹${income.toLocaleString()} < ₹${b.minIncome.toLocaleString()} minimum`] : []),
-          ...(cibil<b.minCibil   ? [`CIBIL ${cibil} < ${b.minCibil} minimum required`] : []),
-        ],
-        missing: [],
-        summary: b.elig ? `Eligible at ${b.rate} p.a.` : `Not eligible — requirement not met`,
-      })),
-      banks_compared: banks.map(b => ({ ...b, score: Math.round((b.elig ? 0.7 : 0.3) * 90 + 10) })),
-      recommendations: [
-        eligible_banks.length > 0 ? `Apply to ${eligible_banks[0].name} for the best rate` : 'Aim for CIBIL score above 750',
-        income < 25000 ? 'Consider adding a co-applicant to boost eligibility' : 'You qualify for premium loan tiers',
-        'Avoid multiple applications simultaneously to protect your credit score',
-      ],
-      sources_cited: ['Axis Bank eligibility rules', 'HDFC Bank criteria', 'ICICI guidelines', 'SBI Xpress Credit', 'Paisabazaar comparison', 'RBI compliance'],
-    };
-  }
-
-  const bankName = isAxis ? 'Axis' : isSBI ? 'SBI' : isHDFC ? 'HDFC' : isICICI ? 'ICICI' : 'Axis';
-  const minIncome = isHDFC ? 20000 : isICICI ? 25000 : 15000;
-  const minCibil  = isHDFC ? 750 : isSBI||isICICI ? 700 : 720;
-  const thisElig = income >= minIncome && cibil >= minCibil;
-
-  return {
-    decision: thisElig ? 'Eligible' : 'Not Eligible',
-    summary: thisElig
-      ? `You meet all ${bankName} Bank personal loan requirements. Your application can proceed.`
-      : `Your profile does not satisfy all ${bankName} Bank requirements. See the failed conditions below.`,
-    detailed_explanation: thisElig
-      ? `Based on your profile, you qualify for ${bankName} Bank's personal loan product. Income of ₹${income.toLocaleString()} exceeds the ₹${minIncome.toLocaleString()} threshold and your CIBIL score of ${cibil} meets the ${minCibil}+ requirement.`
-      : `Your profile was evaluated against ${bankName} Bank's current eligibility criteria. ${income < minIncome ? `Your income of ₹${income.toLocaleString()} falls below the ₹${minIncome.toLocaleString()} minimum. ` : ''}${cibil < minCibil ? `Your CIBIL score of ${cibil} is below the required ${minCibil}. ` : ''}`,
-    confidence: parseFloat(confidence.toFixed(2)),
-    rule_results: [{
-      bank: bankName,
-      eligible: thisElig,
-      passed: [
-        ...(income>=minIncome ? [`Monthly income ₹${income.toLocaleString()} ≥ ₹${minIncome.toLocaleString()} minimum`] : []),
-        ...(cibil>=minCibil   ? [`CIBIL score ${cibil} ≥ ${minCibil} required`] : []),
-        ...(['Minimum age 21 years', 'Employment status: salaried/self-employed'].filter(()=>Math.random()>0.3)),
-      ],
-      failed: [
-        ...(income<minIncome ? [`Monthly income ₹${income.toLocaleString()} below ₹${minIncome.toLocaleString()} threshold`] : []),
-        ...(cibil<minCibil   ? [`CIBIL ${cibil} below ${minCibil} minimum`] : []),
-      ],
-      missing: Math.random() > 0.7 ? ['Work experience (months) not provided'] : [],
-      summary: thisElig ? `Eligible — all criteria met` : `Not eligible — criteria insufficient`,
-    }],
-    banks_compared: [],
-    recommendations: thisElig
-      ? [`Proceed with ${bankName} Bank application`, 'Prepare last 3 months salary slips + 6 months bank statement', 'Consider requesting pre-approved offer if you hold a salary account']
-      : [
-          cibil < minCibil ? `Improve CIBIL to ${minCibil}+ — pay off existing EMIs on time` : `Increase monthly income to ₹${minIncome.toLocaleString()}+`,
-          'SBI has the lowest income threshold at ₹15,000 — may be an alternative',
-          'Adding a co-applicant with higher income can boost eligibility',
-        ],
-    sources_cited: [`${bankName} Bank eligibility rules`, 'RBI compliance guidelines', 'Paisabazaar comparison data'],
-  };
+// ── Textarea auto-resize ────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
 }
 
+// ── Key handler ─────────────────────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendQuery();
+  }
+}
+
+// ── Bank filter chips ───────────────────────────────────────────
+function toggleBank(el) {
+  el.classList.toggle('active');
+}
+
+// ── Sample query ────────────────────────────────────────────────
+function sendSample(q) {
+  const input = document.getElementById('queryInput');
+  input.value = q;
+  autoResize(input);
+  sendQuery();
+}
+
+// ── Clear chat ──────────────────────────────────────────────────
+function clearChat() {
+  const chatArea   = document.getElementById('chatArea');
+  const emptyState = document.getElementById('emptyState');
+  // Remove all .msg elements
+  chatArea.querySelectorAll('.msg-wrapper-outer').forEach(el => el.remove());
+  emptyState.style.display = '';
+  msgIndex = 0;
+}
+
+// ── Main send ───────────────────────────────────────────────────
 async function sendQuery() {
-  const input = document.getElementById('chatInput');
+  if (isLoading) return;
+  const input = document.getElementById('queryInput');
   const query = input.value.trim();
-  if (!query || state.loading) return;
+  if (!query) return;
+
+  // Hide empty state
+  document.getElementById('emptyState').style.display = 'none';
+
   input.value = '';
   input.style.height = 'auto';
-  document.getElementById('sendBtn').disabled = true;
-  document.getElementById('suggestions').style.display = 'none';
-  addMessage('user', query);
-  showTyping();
-  state.loading = true;
-  renderResultLoading();
+  setLoading(true);
 
-  let data;
+  appendUserMsg(query);
+  const thinkId = appendThinking();
+
   try {
-    // ── Real backend call ──────────────────────────────────────────────────
-    const res = await fetch('http://localhost:8000/query', {
-      method: 'POST',
+    const res  = await fetch(`${API_BASE}/query`, {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query })
+      body:    JSON.stringify({ query }),
     });
 
     if (!res.ok) {
-      // Parse error detail from FastAPI's JSON error body
-      let errDetail = `HTTP ${res.status}`;
-      try {
-        const errBody = await res.json();
-        errDetail = errBody.detail || errDetail;
-      } catch(_) {}
-      throw new Error(errDetail);
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      removeElement(thinkId);
+      appendErrorMsg(err.detail || `HTTP ${res.status}`);
+      return;
     }
 
-    data = await res.json();
+    const data = await res.json();
+    removeElement(thinkId);
+    appendAssistantMsg(data);
 
-    // Normalise: backend returns rule_results as list of dicts — ensure arrays exist
-    data.rule_results  = data.rule_results  || [];
-    data.banks_compared = data.banks_compared || [];
-    data.recommendations = data.recommendations || [];
-    data.sources_cited   = data.sources_cited   || [];
-    data.summary          = data.summary         || '';
-    data.detailed_explanation = data.detailed_explanation || '';
-
-  } catch(e) {
-    removeTyping();
-    const errMsg = e.message || 'Unknown error';
-    addMessage('sys', `⚠ Error: ${errMsg}`);
-    renderError(`Backend error: ${errMsg}<br><small style="opacity:0.7">Check the uvicorn terminal for the full traceback.</small>`);
-    state.loading = false;
-    document.getElementById('sendBtn').disabled = false;
-    return;
+  } catch (e) {
+    removeElement(thinkId);
+    appendErrorMsg('Could not reach the API. Make sure the server is running on port 8000.');
+  } finally {
+    setLoading(false);
   }
-
-  state.lastResponse = data;
-  removeTyping();
-  const replyText = `Decision: <strong>${data.decision || 'Unknown'}</strong>. ${data.summary}`;
-  addMessage('sys', replyText);
-  renderResult(data);
-  state.loading = false;
-  document.getElementById('sendBtn').disabled = false;
 }
 
-function useSuggestion(text) {
-  document.getElementById('chatInput').value = text;
-  sendQuery();
+// ── Loading state ───────────────────────────────────────────────
+function setLoading(state) {
+  isLoading = state;
+  const btn = document.getElementById('sendBtn');
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  btn.disabled = state;
+  if (state) {
+    dot.classList.add('loading');
+    txt.textContent = 'Thinking…';
+  } else {
+    dot.classList.remove('loading');
+    txt.textContent = 'API connected';
+  }
 }
 
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuery(); }
-}
-
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
-}
-
-function addMessage(role, text) {
-  const container = document.getElementById('chatMessages');
-  const now = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+// ── Append user message ─────────────────────────────────────────
+function appendUserMsg(text) {
+  const id = `msg-${++msgIndex}`;
   const div = document.createElement('div');
-  div.className = `msg ${role === 'user' ? 'user' : 'sys'}`;
+  div.className = 'msg-wrapper-outer';
   div.innerHTML = `
-    <div class="msg-avatar ${role === 'user' ? 'usr' : 'sys'}">${role==='user'?'YOU':'AI'}</div>
-    <div>
-      <div class="msg-bubble">${text}</div>
-      <div class="msg-time">${now}</div>
+    <div class="message-wrapper">
+      <div class="msg user" id="${id}">
+        <div class="msg-avatar">👤</div>
+        <div class="msg-body">
+          <div class="msg-content">${escHtml(text)}</div>
+        </div>
+      </div>
     </div>`;
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
+  document.getElementById('chatArea').appendChild(div);
+  scrollToBottom();
 }
 
-function showTyping() {
-  const container = document.getElementById('chatMessages');
+// ── Append thinking indicator ───────────────────────────────────
+function appendThinking() {
+  const id = `think-${++msgIndex}`;
   const div = document.createElement('div');
-  div.className = 'msg sys'; div.id = 'typingMsg';
-  div.innerHTML = `<div class="msg-avatar sys">AI</div><div><div class="msg-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div></div>`;
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-}
-
-function removeTyping() {
-  const el = document.getElementById('typingMsg');
-  if (el) el.remove();
-}
-
-function renderResultLoading() {
-  document.getElementById('resultPanel').innerHTML = `
-    <div class="skel-card"><div class="skel skel-h" style="width:60%"></div><div class="skel skel-p" style="width:40%"></div><div class="skel skel-bar"></div></div>
-    <div class="skel-card" style="margin-top:2px"><div class="skel skel-p" style="width:55%"></div><div class="skel skel-p" style="width:80%"></div><div class="skel skel-p" style="width:70%"></div></div>`;
-}
-
-function renderError(msg) {
-  document.getElementById('resultPanel').innerHTML = `<div class="error-block">⚠ ${msg}</div>`;
-}
-
-function renderResult(data) {
-  const d = data.decision.toLowerCase().replace(/ /g,'-');
-  const cls = d === 'eligible' ? 'eligible' : d === 'not-eligible' ? 'not-eligible' : 'partial';
-  const icon = cls === 'eligible' ? '✓' : cls === 'not-eligible' ? '✗' : '~';
-  const pct = Math.round((data.confidence || 0.7) * 100);
-
-  // ── Normalise banks_compared ──────────────────────────────────────────────
-  // Backend sends either:
-  //   A) list of strings: ["Axis","SBI","HDFC","ICICI"]  (comparison query)
-  //   B) empty list []  (single bank query)
-  // We build rich objects from rule_results so the table always has real data.
-
-  const BANK_RATES = { Axis:'10.49%', HDFC:'10.50%', ICICI:'10.65%', SBI:'11.05%' };
-
-  // Build comparison objects — prefer backend banks_compared (has real rate/score),
-  // fall back to building from rule_results for robustness
-  const compBanks = (data.banks_compared && data.banks_compared.length > 0)
-    ? data.banks_compared.map(b => ({
-        name:     b.name,
-        eligible: b.eligible,
-        rate:     b.rate || BANK_RATES[b.name] || 'N/A',
-        score:    b.score || 50,
-        passed:   (data.rule_results.find(r=>r.bank===b.name)||{}).passed || [],
-        failed:   (data.rule_results.find(r=>r.bank===b.name)||{}).failed || [],
-      }))
-    : data.rule_results.map(r => ({
-        name:     r.bank,
-        eligible: r.eligible,
-        rate:     BANK_RATES[r.bank] || 'N/A',
-        score:    r.eligible ? 75 : 35,
-        passed:   r.passed || [],
-        failed:   r.failed || [],
-      }));
-
-  // Show Compare tab whenever there are multiple banks
-  const hasComp = compBanks.length > 1;
-
-  const allPassed  = data.rule_results.flatMap(r => (r.passed||[]).map(t=>({text:t, bank:r.bank})));
-  const allFailed  = data.rule_results.flatMap(r => (r.failed||[]).map(t=>({text:t, bank:r.bank})));
-  const allMissing = data.rule_results.flatMap(r => (r.missing||[]).map(t=>({text:t, bank:r.bank})));
-
-  // Fix rupee symbol — handles all Windows CP1252 / UTF-8 mojibake variants:
-  // â‚¹  → ₹   (classic UTF-8 read as Latin-1)
-  // â,¨  → ₹   (another variant)
-  // ₹   → ₹   (already correct HTML entity — leave as-is)
-  const fixRupee = s => {
-    if (!s) return '';
-    return s
-      .replace(/â‚¹/g, '₹')          // most common on Windows
-      .replace(/â[^\w]/g, '₹')        // catch other â-prefix variants
-      .replace(/₹(?=\d)/g, '₹');     // HTML entity → real symbol before digits
-  };
-
-  document.getElementById('resultPanel').innerHTML = `
-    <div class="tab-row" style="margin: 0 -16px; padding: 0 16px;">
-      <button class="tab-btn active" onclick="switchTab('decision', this)">Decision</button>
-      ${hasComp ? `<button class="tab-btn" onclick="switchTab('compare', this)">Compare Banks</button>` : ''}
-      <button class="tab-btn" onclick="switchTab('simulate', this)">Simulate</button>
-    </div>
-
-    <div class="tab-panel active" id="tab-decision">
-      <div class="decision-card">
-        <div class="decision-header ${cls}">
-          <div class="decision-verdict">
-            <div class="verdict-icon ${cls}">${icon}</div>
-            <div class="verdict-text">
-              <h3 class="${cls}">${data.decision}</h3>
-              <p>${data.rule_results.map(r=>r.bank).join(', ')} · ${data.rule_results.length} bank${data.rule_results.length>1?'s':''} evaluated</p>
-            </div>
+  div.className = 'msg-wrapper-outer';
+  div.id = id;
+  div.innerHTML = `
+    <div class="message-wrapper">
+      <div class="msg assistant">
+        <div class="msg-avatar">✦</div>
+        <div class="msg-body">
+          <div class="thinking">
+            <div class="thinking-dots"><span></span><span></span><span></span></div>
+            Analysing your profile…
           </div>
-          <div class="confidence-block">
-            <div class="conf-label">Confidence</div>
-            <div class="conf-val ${cls}">${pct}%</div>
-          </div>
-        </div>
-        <div class="decision-body">
-          <div class="conf-bar-wrap">
-            <div class="conf-bar-label"><span>Confidence score</span><span>${pct}%</span></div>
-            <div class="conf-bar-track"><div class="conf-bar-fill ${cls}" id="confBarFill" style="width:0%"></div></div>
-          </div>
-          <div class="summary-text">${fixRupee(data.summary)}</div>
         </div>
       </div>
+    </div>`;
+  document.getElementById('chatArea').appendChild(div);
+  scrollToBottom();
+  return id;
+}
 
-      ${(allPassed.length+allFailed.length+allMissing.length > 0) ? `
-      <div class="section-card">
-        <div class="section-title">Rule Breakdown</div>
-        <div class="section-body">
-          ${allPassed.map(r=>`<div class="rule-item pass"><div class="rule-icon pass">✓</div><div class="rule-text">${fixRupee(r.text)}</div></div>`).join('')}
-          ${allFailed.map(r=>`<div class="rule-item fail"><div class="rule-icon fail">✗</div><div class="rule-text">${fixRupee(r.text)}</div></div>`).join('')}
-          ${allMissing.map(r=>`<div class="rule-item miss"><div class="rule-icon miss">?</div><div class="rule-text">${fixRupee(r.text)}</div></div>`).join('')}
-        </div>
-      </div>` : ''}
-
-      ${data.recommendations && data.recommendations.length > 0 ? `
-      <div class="section-card">
-        <div class="section-title">Recommendations</div>
-        <div class="section-body">
-          ${data.recommendations.map(r=>`<div class="rec-item"><div class="rec-bullet"></div><span>${fixRupee(r)}</span></div>`).join('')}
-        </div>
-      </div>` : ''}
-
-      ${data.sources_cited && data.sources_cited.length > 0 ? `
-      <div class="section-card">
-        <div class="section-title">Sources</div>
-        <div class="sources-row">
-          ${data.sources_cited.map(s => {
-            const sc = s.toLowerCase().includes('rbi') ? 'reg' : s.toLowerCase().includes('paisabazaar')||s.toLowerCase().includes('bankbazaar') ? 'agg' : 'bank';
-            return `<span class="source-badge ${sc}">${s}</span>`;
-          }).join('')}
-        </div>
-        ${data.detailed_explanation ? `
-        <button class="drawer-toggle" onclick="toggleDrawer(this)">
-          <span>Why this decision?</span><span class="drawer-arrow">▼</span>
-        </button>
-        <div class="drawer-content"><p>${fixRupee(data.detailed_explanation)}</p></div>` : ''}
-      </div>` : ''}
-    </div>
-
-    ${hasComp ? `
-    <div class="tab-panel" id="tab-compare">
-      <div class="section-card">
-        <div class="section-title">Bank Comparison</div>
-        <div style="overflow-x:auto; padding: 4px 0">
-          <table class="bank-table" style="min-width:300px">
-            <thead><tr><th>Bank</th><th>Eligibility</th><th>Rate</th><th>Score</th></tr></thead>
-            <tbody>
-              ${[...compBanks].sort((a,b)=>(b.eligible?1:0)-(a.eligible?1:0)).map(b=>`
-                <tr>
-                  <td><span class="bank-name">${b.name}</span></td>
-                  <td><span class="badge-elig ${b.eligible?'yes':'no'}">${b.eligible?'Eligible':'Not Eligible'}</span></td>
-                  <td style="font-family:var(--mono);color:var(--text-1)">${b.rate}</td>
-                  <td><div class="score-bar"><div class="score-track"><div class="score-fill" style="width:${b.score}%"></div></div><span style="font-family:var(--mono);font-size:11px;color:var(--text-3)">${b.score}</span></div></td>
-                </tr>`).join('')}
-            </tbody>
-          </table>
+// ── Append error ────────────────────────────────────────────────
+function appendErrorMsg(detail) {
+  const div = document.createElement('div');
+  div.className = 'msg-wrapper-outer';
+  div.innerHTML = `
+    <div class="message-wrapper">
+      <div class="msg assistant">
+        <div class="msg-avatar">✦</div>
+        <div class="msg-body">
+          <div class="error-msg">⚠ ${escHtml(detail)}</div>
         </div>
       </div>
-      <div class="section-card">
-        <div class="section-title">Per-Bank Rules</div>
-        <div class="section-body">
-          ${data.rule_results.map(r=>`
-            <div style="padding:8px 10px;border-radius:var(--r);border:1px solid ${r.eligible?'rgba(34,212,122,0.2)':'rgba(245,69,90,0.2)'};background:${r.eligible?'rgba(34,212,122,0.04)':'rgba(245,69,90,0.04)'};margin-bottom:6px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                <span style="font-weight:500;font-size:13px;color:var(--text-1)">${r.bank}</span>
-                <span style="font-size:11px;font-family:var(--mono);color:${r.eligible?'var(--green)':'var(--red)'}">${r.eligible?'✓ PASS':'✗ FAIL'}</span>
-              </div>
-              ${(r.failed||[]).map(f=>`<div style="font-size:11.5px;color:var(--red);margin-bottom:3px">✗ ${fixRupee(f)}</div>`).join('')}
-              ${(r.passed||[]).slice(0,2).map(f=>`<div style="font-size:11.5px;color:var(--green);margin-bottom:3px">✓ ${fixRupee(f)}</div>`).join('')}
+    </div>`;
+  document.getElementById('chatArea').appendChild(div);
+  scrollToBottom();
+}
+
+// ── Append full assistant response ──────────────────────────────
+function appendAssistantMsg(data) {
+  const id = `msg-${++msgIndex}`;
+
+  // Decision banner
+  const decLabel = data.decision || 'Unknown';
+  const decClass =
+    decLabel === 'Eligible'           ? 'eligible' :
+    decLabel === 'Partially Eligible' ? 'partial'  :
+    decLabel === 'Not Eligible'       ? 'rejected' : 'unknown';
+  const decIcon =
+    decClass === 'eligible' ? '✓' :
+    decClass === 'partial'  ? '~' :
+    decClass === 'rejected' ? '✗' : '?';
+
+  // Bank cards
+  const bankCards = (data.banks_compared || []).map(b => {
+    const pct  = b.score || 0;
+    const fill = b.eligible ? 'fill-green' : (pct >= 50 ? 'fill-amber' : 'fill-red');
+    const cls  = b.eligible ? 'eligible-card' : 'rejected-card';
+    return `
+      <div class="bank-card ${cls}">
+        <div class="bank-card-header">
+          <div class="bank-name">${escHtml(b.name)}</div>
+          <span class="bank-badge ${b.eligible ? 'badge-yes' : 'badge-no'}">${b.eligible ? 'ELIGIBLE' : 'REJECTED'}</span>
+        </div>
+        <div class="bank-rate">${escHtml(b.rate || 'N/A')}</div>
+        <div class="bank-score-bar"><div class="bank-score-fill ${fill}" style="width:${pct}%"></div></div>
+        <div class="bank-score-label">Score: ${pct}%</div>
+      </div>`;
+  }).join('');
+
+  // Explanation accordion
+  const explanation = data.detailed_explanation
+    ? `<div class="expand-section">
+        <div class="expand-header" onclick="toggleExpand(this)">
+          <div class="expand-header-left"><span>📋</span> Detailed Analysis</div>
+          <span class="expand-icon">▾</span>
+        </div>
+        <div class="expand-body">${formatText(data.detailed_explanation)}</div>
+      </div>` : '';
+
+  // Recommendations
+  const recs = (data.recommendations || []);
+  const recsHtml = recs.length ? `
+    <div class="expand-section">
+      <div class="expand-header" onclick="toggleExpand(this)">
+        <div class="expand-header-left"><span>💡</span> Recommendations (${recs.length})</div>
+        <span class="expand-icon">▾</span>
+      </div>
+      <div class="expand-body">
+        <div class="recs-list">
+          ${recs.map((r, i) => `
+            <div class="rec-item">
+              <div class="rec-num">${i+1}</div>
+              <div>${escHtml(r)}</div>
             </div>`).join('')}
         </div>
       </div>
-    </div>` : ''}
+    </div>` : '';
 
-    <div class="tab-panel" id="tab-simulate">
-      <div class="section-card">
-        <div class="section-title">What-If Simulator</div>
-        <div class="section-body sim-section">
-          <div class="sim-row">
-            <div class="sim-label"><span>Monthly Income</span><span class="sim-value" id="simIncomeVal">₹40,000</span></div>
-            <input type="range" class="sim-slider" id="simIncome" min="10000" max="200000" step="5000" value="40000" oninput="updateSim()">
+  // Rule results accordion
+  const ruleHtml = (data.rule_results || []).length ? `
+    <div class="expand-section">
+      <div class="expand-header" onclick="toggleExpand(this)">
+        <div class="expand-header-left"><span>⚙</span> Rule Engine Output</div>
+        <span class="expand-icon">▾</span>
+      </div>
+      <div class="expand-body">
+        ${(data.rule_results || []).map(r => `
+          <div style="margin-bottom:12px">
+            <div style="font-weight:600;color:var(--text);margin-bottom:6px">${escHtml(r.bank)}</div>
+            <div class="rule-list">
+              ${(r.passed || []).slice(0,4).map(p => `<div class="rule-item"><span class="ri" style="color:var(--green)">✓</span> ${escHtml(p)}</div>`).join('')}
+              ${(r.failed || []).map(f => `<div class="rule-item"><span class="ri" style="color:var(--red)">✗</span> ${escHtml(f)}</div>`).join('')}
+              ${(r.missing || []).map(m => `<div class="rule-item"><span class="ri" style="color:var(--amber)">?</span> ${escHtml(m)}</div>`).join('')}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  // Sources
+  const sources = (data.sources_cited || []);
+  const sourcesHtml = sources.length ? `
+    <div style="margin-top:12px">
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:6px">Sources</div>
+      <div class="sources-row">
+        ${sources.map(s => `<span class="source-chip">${escHtml(s)}</span>`).join('')}
+      </div>
+    </div>` : '';
+
+  // Meta
+  const conf    = Math.round((data.confidence || 0) * 100);
+  const latency = data.latency_ms ? `${Math.round(data.latency_ms)}ms` : '';
+  const cached  = data.from_cache ? '· cached' : '';
+
+  const div = document.createElement('div');
+  div.className = 'msg-wrapper-outer';
+  div.innerHTML = `
+    <div class="message-wrapper">
+      <div class="msg assistant" id="${id}">
+        <div class="msg-avatar">✦</div>
+        <div class="msg-body">
+          <div class="msg-content">
+            <div class="decision-banner ${decClass}">${decIcon} ${escHtml(decLabel)}</div>
+
+            ${data.best_bank ? `<div style="font-size:12.5px;color:var(--text-3);margin-bottom:12px">
+              Best option: <strong style="color:var(--accent)">${escHtml(data.best_bank)}</strong>
+              ${data.best_bank_reason ? `· ${escHtml(data.best_bank_reason)}` : ''}
+            </div>` : ''}
+
+            <div class="summary-text">${formatText(data.summary || '')}</div>
+
+            ${bankCards ? `<div class="banks-grid">${bankCards}</div>` : ''}
+
+            ${explanation}
+            ${recsHtml}
+            ${ruleHtml}
+            ${sourcesHtml}
+
+            <div class="msg-meta">
+              <div class="meta-chip">
+                <div class="confidence-bar">
+                  <div class="confidence-fill" style="width:${conf}%"></div>
+                </div>
+                Confidence <span>${conf}%</span>
+              </div>
+              ${latency ? `<div class="meta-chip">⏱ <span>${latency} ${cached}</span></div>` : ''}
+            </div>
           </div>
-          <div class="sim-row">
-            <div class="sim-label"><span>CIBIL Score</span><span class="sim-value" id="simCibilVal">750</span></div>
-            <input type="range" class="sim-slider" id="simCibil" min="300" max="900" step="10" value="750" oninput="updateSim()">
-          </div>
-          <div id="simResult" class="sim-result"></div>
-          <button class="sugg-btn" style="align-self:flex-start;margin-top:4px" onclick="queryFromSim()">Run full analysis ↗</button>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
+  document.getElementById('chatArea').appendChild(div);
+  scrollToBottom();
 
+  // Animate score bars
   setTimeout(() => {
-    const bar = document.getElementById('confBarFill');
-    if (bar) bar.style.width = pct + '%';
-  }, 100);
-  updateSim();
+    div.querySelectorAll('.bank-score-fill').forEach(el => {
+      el.style.width = el.style.width; // trigger reflow
+    });
+  }, 50);
 }
 
-function switchTab(name, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  const panel = document.getElementById('tab-' + name);
-  if (panel) panel.classList.add('active');
+// ── Accordion toggle ────────────────────────────────────────────
+function toggleExpand(header) {
+  const body = header.nextElementSibling;
+  const icon = header.querySelector('.expand-icon');
+  body.classList.toggle('open');
+  icon.classList.toggle('open');
 }
 
-function toggleDrawer(btn) {
-  btn.nextElementSibling.classList.toggle('open');
-  btn.querySelector('.drawer-arrow').classList.toggle('open');
+// ── Helpers ─────────────────────────────────────────────────────
+function removeElement(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
 }
 
-function updateSim() {
-  const income = parseInt(document.getElementById('simIncome').value);
-  const cibil  = parseInt(document.getElementById('simCibil').value);
-  document.getElementById('simIncomeVal').textContent = '₹' + income.toLocaleString('en-IN');
-  document.getElementById('simCibilVal').textContent = cibil;
-  const banks = [
-    { name:'Axis',  ok: income>=15000 && cibil>=720 },
-    { name:'HDFC',  ok: income>=20000 && cibil>=750 },
-    { name:'ICICI', ok: income>=25000 && cibil>=700 },
-    { name:'SBI',   ok: income>=15000 && cibil>=700 },
-  ];
-  const result = document.getElementById('simResult');
-  if (result) {
-    result.innerHTML = banks.map(b =>
-      `<strong>${b.name}:</strong> <span style="color:${b.ok?'var(--green)':'var(--red)'}">${b.ok?'Eligible':'Not Eligible'}</span>`
-    ).join(' &nbsp;·&nbsp; ');
+function scrollToBottom() {
+  const ca = document.getElementById('chatArea');
+  requestAnimationFrame(() => {
+    ca.scrollTop = ca.scrollHeight;
+  });
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatText(text) {
+  if (!text) return '';
+  // Bold **text**
+  text = escHtml(text)
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br/>');
+  return `<p>${text}</p>`;
+}
+
+// ── Health check on load ────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    if (!data.pipeline_ready) {
+      document.getElementById('statusText').textContent = 'Pipeline loading…';
+    }
+  } catch {
+    document.getElementById('statusDot').style.background = 'var(--red)';
+    document.getElementById('statusDot').style.boxShadow  = '0 0 6px var(--red)';
+    document.getElementById('statusText').textContent = 'API offline';
   }
 }
 
-function queryFromSim() {
-  const income = document.getElementById('simIncome').value;
-  const cibil  = document.getElementById('simCibil').value;
-  document.getElementById('chatInput').value = `Compare all banks — income ₹${parseInt(income).toLocaleString()}, CIBIL score ${cibil}`;
-  sendQuery();
-}
+checkHealth();
 </script>
 </body>
 </html>

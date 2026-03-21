@@ -1,32 +1,41 @@
 """
-Loan Policy Advisor — Pipeline v3
-===================================
-Fully deterministic, per-bank, logically consistent pipeline.
+Loan Policy Advisor — Pipeline v4
+====================================
+Replaces the NVIDIA CV pipeline entirely with a hybrid extraction stack.
 
 Flow:
-  Query → Cache → Parse → Route → Retrieve
-        → Rule Engine (per-bank, strict)
-        → Reasoning Layer (structured context)
-        → Confidence (calibrated)
-        → Consistency Validation
-        → LLM Explanation (grounded, no hallucination)
+  Query → Cache
+        → QueryUnderstanding (intent + profile extraction)
+        → Route (MoE: skip RAG for simple queries)
+        → Retrieve (FAISS + BM25 + RRF + Reranker)
+        → EligibilityEngine (deterministic per-bank rules)
+        → ReasoningLayer (structured context)
+        → Confidence
+        → Validation
+        → LLM Explanation (grounds explanation in rule results only)
         → Cache → Response
+
+What changed from v3:
+  - NVIDIA CV models (page-elements, OCR, parse) removed entirely
+  - pdf_pipeline package replaces pdf_pipeline.py monolith
+  - QueryUnderstanding replaces bare LLM parse for entity extraction
+  - Table extraction (Camelot/Tabula) added as first-class concern
+  - Extraction is now: pdfplumber → PyMuPDF → PaddleOCR → Tesseract
 """
 
 from __future__ import annotations
+
 import time
 from dataclasses import dataclass, asdict
 from typing import Any
 
-from config import MIN_DOCS_THRESHOLD
-from services.llm import LLMService, ParsedQuery
-from services.retrieval import RetrievalService
+from config import MIN_DOCS_THRESHOLD, MOE_SIMPLE_QUERY_WORDS
+
+from services.llm      import LLMService
+from services.cache    import SemanticCache
 from services.rule_engine import RuleEngine, BankResult
-from services.router import Router, RetrievalPlan
-from services.fusion import ContextFusion
-from services.search import FallbackSearch
-from services.cache import SemanticCache
-from config import MOE_SIMPLE_QUERY_WORDS
+from services.fusion   import ContextFusion
+from services.search   import FallbackSearch
 from services.reasoning import (
     build_reasoning_context,
     compute_confidence,
@@ -35,8 +44,16 @@ from services.reasoning import (
     ReasoningContext,
 )
 
+# New modules
+from pdf_pipeline.query_understanding import understand_query, QuerySignals
+from pdf_pipeline.retriever import RetrievalService, DocChunk
+
+import logging
+logger = logging.getLogger(__name__)
+
+
 # ---------------------------------------------------------------------------
-# Response
+# Response dataclass
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -49,7 +66,7 @@ class AdvisorResponse:
     rule_results:         list[dict]
     confidence:           float
     sources_cited:        list[str]
-    reasoning_context:    dict       # full reasoning: best_bank, critical_failures, failure_summary…
+    reasoning_context:    dict
     validation_issues:    list[dict]
     best_bank:            str | None = None
     best_bank_reason:     str | None = None
@@ -58,9 +75,13 @@ class AdvisorResponse:
     latency_ms:           float = 0.0
     from_cache:           bool  = False
 
+
 # ---------------------------------------------------------------------------
 # Decision logic
 # ---------------------------------------------------------------------------
+
+BANK_RATES = {"axis": "10.49%", "hdfc": "10.50%", "icici": "10.65%", "sbi": "11.05%"}
+
 
 def _determine_decision(
     bank_results: list[BankResult],
@@ -84,19 +105,20 @@ def _determine_decision(
     else:
         return "Not Eligible"
 
+
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
-
-BANK_RATES = {"axis": "10.49%", "hdfc": "10.50%", "icici": "10.65%", "sbi": "11.05%"}
 
 class LoanAdvisorPipeline:
 
     def __init__(self):
         self.llm         = LLMService()
-        self.retrieval   = RetrievalService()
+        self.retrieval   = RetrievalService(
+            index_dir=_index_dir(),
+            embed_dim=_embed_dim(),
+        )
         self.rule_engine = RuleEngine()
-        self.router      = Router()
         self.fusion      = ContextFusion()
         self.search      = FallbackSearch()
         self.cache       = SemanticCache()
@@ -111,92 +133,97 @@ class LoanAdvisorPipeline:
             cached["from_cache"] = True
             return AdvisorResponse(**cached)
 
-        # ── 1. Parse ──────────────────────────────────────────────────────────
-        parsed: ParsedQuery = self.llm.parse_query(user_query)
-        profile = parsed.profile
+        # ── 1. Query Understanding ────────────────────────────────────────────
+        # Rule-based entity extraction + intent — fast, no API call needed.
+        signals: QuerySignals = understand_query(user_query)
+        profile  = signals.profile
 
-        # DTI guard: LLM sometimes returns 40 instead of 0.40
-        if "dti_ratio" in profile and profile["dti_ratio"] is not None:
-            if profile["dti_ratio"] > 1.5:
-                profile["dti_ratio"] = profile["dti_ratio"] / 100.0
+        # Fall back to LLM parsing for complex queries where rule-based
+        # extraction produced an empty profile (rare ambiguous cases)
+        if not profile and len(user_query.split()) > 8:
+            logger.info("[Pipeline] Rule-based extraction empty — falling back to LLM parse")
+            parsed = self.llm.parse_query(user_query)
+            profile = parsed.profile
+            signals.banks = signals.banks or parsed.banks
+            signals.intent = signals.intent if signals.intent != "general" else parsed.intent
 
-        print(f"[Pipeline] intent={parsed.intent} banks={parsed.banks}")
-        print(f"[Pipeline] profile={profile}")
+        # DTI guard: sometimes returned as 40 instead of 0.40
+        if profile.get("dti_ratio") and profile["dti_ratio"] > 1.5:
+            profile["dti_ratio"] /= 100.0
 
-        # ── 2. Route ──────────────────────────────────────────────────────────
-        plan = self.router.route(parsed)
+        logger.info("[Pipeline] intent=%s  banks=%s  profile=%s",
+                    signals.intent, signals.banks, profile)
 
-        # ── 3. MoE Routing: skip RAG for simple eligibility queries ──────────────
+        # ── 2. Route — MoE shortcut for simple eligibility queries ──────────
         word_count = len(user_query.split())
         skip_rag   = (
             word_count <= MOE_SIMPLE_QUERY_WORDS
-            and parsed.intent == "eligibility"
-            and bool(parsed.profile)       # have enough profile data
+            and signals.intent == "eligibility"
+            and bool(profile)
         )
 
-        # ── 3b. Retrieve (skipped for simple queries) ─────────────────────────
-        chunks: list = []
-        web_context  = ""
+        # ── 3. Retrieve ───────────────────────────────────────────────────────
+        chunks: list[DocChunk] = []
+        web_context = ""
+
         if not skip_rag:
+            # Use the reformulated query for better retrieval recall
+            retrieval_query = signals.reformulated_query or user_query
             chunks = self.retrieval.retrieve(
-                query=user_query,
-                banks=plan.banks if not plan.use_hybrid else None,
-                doc_types=plan.doc_types if not plan.use_hybrid else None,
+                query=retrieval_query,
                 top_k=8,
+                banks=signals.banks if signals.banks else None,
+                fetch_k=20,
             )
             if len(chunks) < MIN_DOCS_THRESHOLD:
                 results = self.search.search(user_query)
                 web_context = self.search.format_results(results)
+                logger.info("[Pipeline] Fallback web search: %d results", len(results))
         else:
-            print(f"[Pipeline] MoE: simple query ({word_count}w) — skipping RAG")
+            logger.info("[Pipeline] MoE: simple query (%dw) — skipping RAG", word_count)
 
-        # Extract real similarity scores for calibrated confidence
-        retrieval_scores = [c.similarity_score for c in chunks if hasattr(c, "similarity_score")]
+        retrieval_scores = [c.similarity_score for c in chunks]
 
-        # ── 4. Rule Engine — strict per-bank evaluation ───────────────────────
+        # ── 4. Rule Engine ────────────────────────────────────────────────────
         bank_results: list[BankResult] = []
 
-        if parsed.intent in ("eligibility", "comparison") and profile:
-            banks_to_check = plan.banks or self.rule_engine.available_banks()
+        if signals.intent in ("eligibility", "comparison") and profile:
+            banks_to_check = signals.banks or self.rule_engine.available_banks()
             for bank in banks_to_check:
                 br = self.rule_engine.evaluate(bank, profile)
                 bank_results.append(br)
                 status = "✅" if br.eligible else "❌"
-                print(
-                    f"[RuleEngine] {br.bank}: {status} | "
-                    f"pass={len(br.passed)} fail={len(br.failed)} "
-                    f"miss={len(br.missing)} score={br.rule_score:.2f}"
-                )
+                logger.info("[RuleEngine] %s: %s  pass=%d fail=%d miss=%d score=%.2f",
+                            br.bank, status, len(br.passed), len(br.failed),
+                            len(br.missing), br.rule_score)
 
-        # ── 5. Reasoning layer ────────────────────────────────────────────────
+        # ── 5. Reasoning ──────────────────────────────────────────────────────
         reasoning = build_reasoning_context(bank_results, profile)
 
-        # ── 6. Decision (deterministic) ───────────────────────────────────────
+        # ── 6. Decision ───────────────────────────────────────────────────────
         decision = _determine_decision(bank_results, reasoning, profile)
-        print(f"[Pipeline] Decision: {decision} | eligible={reasoning.eligible_banks}")
+        logger.info("[Pipeline] Decision: %s  eligible=%s", decision, reasoning.eligible_banks)
 
-        # ── 7. Calibrated confidence ──────────────────────────────────────────
-        confidence, conf_breakdown = compute_confidence(bank_results, reasoning, len(chunks), retrieval_scores)
-        reasoning.confidence_breakdown = conf_breakdown   # attach for surfacing in response
-        print(f"[Pipeline] Confidence: {confidence} | breakdown={conf_breakdown}")
+        # ── 7. Confidence ─────────────────────────────────────────────────────
+        confidence, conf_breakdown = compute_confidence(
+            bank_results, reasoning, len(chunks), retrieval_scores
+        )
+        reasoning.confidence_breakdown = conf_breakdown
 
-        # ── 8. Consistency validation ─────────────────────────────────────────
+        # ── 8. Validation ─────────────────────────────────────────────────────
         issues = validate_consistency(bank_results, decision, reasoning)
-        for issue in issues:
-            print(f"[Validation] {issue.severity.upper()}: {issue.message}")
 
-        # ── 9. Build structured data for frontend ─────────────────────────────
+        # ── 9. Structured data for response ───────────────────────────────────
         rule_results_dicts = [br.to_dict() for br in bank_results]
-
         banks_compared = sorted(
             [
                 {
-                    "name":          br.bank,
-                    "eligible":      br.eligible,
-                    "rate":          BANK_RATES.get(br.bank.lower(), "N/A"),
-                    "score":         int(compute_final_score(br) * 100),  # penalised score
-                    "rule_score":    round(br.rule_score * 100),          # raw pass rate
-                    "summary":       br.summary,
+                    "name":       br.bank,
+                    "eligible":   br.eligible,
+                    "rate":       BANK_RATES.get(br.bank.lower(), "N/A"),
+                    "score":      int(compute_final_score(br) * 100),
+                    "rule_score": round(br.rule_score * 100),
+                    "summary":    br.summary,
                 }
                 for br in bank_results
             ],
@@ -204,7 +231,7 @@ class LoanAdvisorPipeline:
             reverse=True,
         )
 
-        # ── 10. LLM explanation — strictly grounded ───────────────────────────
+        # ── 10. LLM Explanation ───────────────────────────────────────────────
         fused_context = self.fusion.fuse(chunks)
         if web_context:
             fused_context += "\n\n" + web_context
@@ -215,7 +242,7 @@ class LoanAdvisorPipeline:
                 "detailed_explanation": "Cannot evaluate eligibility without core profile data.",
                 "recommendations": [
                     "Provide your age, monthly income (e.g. ₹35,000/month), and CIBIL score.",
-                    "Mention which bank you are interested in.",
+                    "Mention which bank you are interested in (Axis, HDFC, ICICI, SBI).",
                 ],
                 "sources_cited": [],
             }
@@ -224,7 +251,7 @@ class LoanAdvisorPipeline:
                 query=user_query,
                 rule_results=rule_results_dicts,
                 retrieved_context=fused_context,
-                parsed_query=parsed.raw,
+                parsed_query={"intent": signals.intent, "entities": signals.entities},
                 pre_decision=decision,
                 decision_context=reasoning.to_dict(),
             )
@@ -256,3 +283,24 @@ class LoanAdvisorPipeline:
 
         self.cache.set(user_query, asdict(response))
         return response
+
+
+# ---------------------------------------------------------------------------
+# Config helpers
+# ---------------------------------------------------------------------------
+
+def _index_dir() -> "Path":
+    from pathlib import Path
+    try:
+        from config import FAISS_INDEX_DIR
+        return FAISS_INDEX_DIR
+    except Exception:
+        return Path("models")
+
+
+def _embed_dim() -> int:
+    try:
+        from config import EMBEDDING_DIM
+        return int(EMBEDDING_DIM)
+    except Exception:
+        return 384

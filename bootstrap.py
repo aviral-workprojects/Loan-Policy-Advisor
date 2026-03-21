@@ -1,97 +1,257 @@
 #!/usr/bin/env python3
 """
-Bootstrap Script v2
-====================
-Run this ONCE (and again after adding new documents) to:
-  1. (Optional) Process PDFs via NVIDIA Page Elements API
-  2. Load all documents (structured JSON + plain text)
-  3. Build and save the FAISS index
+Bootstrap v3 — Hybrid Extraction Pipeline
+==========================================
+Processes all PDFs using the new hybrid stack, builds FAISS + BM25 index.
 
 Usage:
-    # Standard bootstrap (plain text extraction for PDFs)
-    python bootstrap.py
-
-    # With NVIDIA PDF processing (USE_NVIDIA_PDF=true in .env)
-    python bootstrap.py --process-pdfs
-
-    # Force reprocess all PDFs
-    python bootstrap.py --process-pdfs --force
+    python bootstrap.py                   # standard run
+    python bootstrap.py --force           # reprocess all PDFs
+    python bootstrap.py --file path.pdf   # single file mode
+    python bootstrap.py --check-deps      # verify optional dependencies
 """
 
-import sys
-import os
-import argparse
-sys.path.insert(0, os.path.dirname(__file__))
+from __future__ import annotations
 
-from config import DATA_DIR, PROCESSED_DATA_DIR
+import argparse
+import json
+import logging
+import sys
+import time
+from pathlib import Path
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+sys.path.insert(0, str(Path(__file__).parent))
+
+
+def check_dependencies() -> None:
+    """Print availability of all optional dependencies."""
+    print("\n── Dependency Check ──────────────────────────────────")
+
+    def check(name, import_str):
+        try:
+            exec(f"import {import_str}")
+            print(f"  ✅  {name}")
+        except ImportError:
+            print(f"  ❌  {name}  (optional)")
+
+    check("pdfplumber",     "pdfplumber")
+    check("PyMuPDF (fitz)", "fitz")
+    check("Camelot",        "camelot")
+    check("Tabula",         "tabula")
+    check("PaddleOCR",      "paddleocr")
+    check("Tesseract",      "pytesseract")
+    check("FAISS",          "faiss")
+    check("sentence-transformers", "sentence_transformers")
+    check("NumPy",          "numpy")
+
+    from pdf_pipeline.ocr           import ocr_availability
+    from pdf_pipeline.table_extractor import table_availability
+
+    print("\n  OCR backends:   ", ocr_availability())
+    print("  Table backends: ", table_availability())
+    print()
+
+
+def process_pdfs(data_dir: Path, processed_dir: Path, force: bool = False) -> list:
+    """
+    Process all PDFs in data_dir using the hybrid extraction stack.
+    Returns list of DocumentChunk objects ready for indexing.
+    """
+    from pdf_pipeline.extractor import extract_pdf
+    from pdf_pipeline.chunker   import chunk_document
+    from pdf_pipeline.retriever import DocChunk
+
+    pdf_files = sorted(data_dir.rglob("*.pdf"))
+    if not pdf_files:
+        logger.warning("No PDF files found in %s", data_dir)
+        return []
+
+    logger.info("Found %d PDF files", len(pdf_files))
+
+    all_chunks: list[DocChunk] = []
+    processed_dir.mkdir(parents=True, exist_ok=True)
+
+    for pdf_path in pdf_files:
+        cache_path = processed_dir / (pdf_path.stem + ".json")
+
+        # Check cache
+        if cache_path.exists() and not force:
+            try:
+                data = json.loads(cache_path.read_text(encoding="utf-8"))
+                cached_chunks = [DocChunk(**c) for c in data["chunks"]]
+                logger.info("[Cache] %-40s %d chunks", pdf_path.name, len(cached_chunks))
+                all_chunks.extend(cached_chunks)
+                continue
+            except Exception as e:
+                logger.warning("[Cache] Failed to load %s: %s — reprocessing", cache_path.name, e)
+
+        # Detect bank from path
+        bank = _detect_bank(pdf_path)
+
+        t0 = time.perf_counter()
+        try:
+            doc    = extract_pdf(pdf_path, bank=bank)
+            chunks = chunk_document(doc)
+        except Exception as e:
+            logger.error("❌  %s — %s", pdf_path.name, e)
+            continue
+
+        elapsed = (time.perf_counter() - t0) * 1000
+
+        # Convert to DocChunk and record stats
+        doc_chunks = [
+            DocChunk(
+                text=c.text,
+                source=pdf_path.name,
+                bank=c.bank,
+                doc_type=c.doc_type,
+                chunk_id=c.chunk_id,
+                field_hint=c.field_hint,
+                section_title=c.section_title,
+                element_type=c.element_type,
+                page_number=c.page_number,
+            )
+            for c in chunks
+        ]
+
+        # Save to cache
+        try:
+            cache_data = {
+                "source":    pdf_path.name,
+                "bank":      bank,
+                "is_scanned": doc.is_scanned,
+                "method":    doc.extraction_method,
+                "chunks":    [
+                    {
+                        "text":           dc.text,
+                        "source":         dc.source,
+                        "bank":           dc.bank,
+                        "doc_type":       dc.doc_type,
+                        "chunk_id":       dc.chunk_id,
+                        "field_hint":     dc.field_hint,
+                        "section_title":  dc.section_title,
+                        "element_type":   dc.element_type,
+                        "page_number":    dc.page_number,
+                        "similarity_score": 0.0,
+                    }
+                    for dc in doc_chunks
+                ],
+            }
+            cache_path.write_text(
+                json.dumps(cache_data, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
+        except Exception as e:
+            logger.warning("[Cache] Failed to save %s: %s", cache_path.name, e)
+
+        method_icon = "📄" if not doc.is_scanned else "🔍"
+        logger.info(
+            "%s  %-40s  %d chunks  %.0fms  bank=%-8s  method=%s",
+            method_icon, pdf_path.name, len(doc_chunks), elapsed,
+            bank, doc.extraction_method,
+        )
+
+        all_chunks.extend(doc_chunks)
+
+    return all_chunks
+
+
+def build_index(chunks, index_dir: Path) -> None:
+    """Build FAISS + BM25 index from chunks and save to disk."""
+    from pdf_pipeline.retriever import RetrievalService, DocChunk
+    from config import EMBEDDING_DIM
+
+    svc = RetrievalService(index_dir=index_dir, embed_dim=int(EMBEDDING_DIM))
+    svc.load_chunks(chunks)
+    svc.build_index(save=True)
+    logger.info("✅  Index saved → %s  (%d chunks)", index_dir, len(chunks))
+
+
+def _detect_bank(pdf_path: Path) -> str:
+    _MAP = {"hdfc": "HDFC", "sbi": "SBI", "icici": "ICICI", "axis": "Axis", "rbi": "RBI"}
+    name = (pdf_path.parent.name + " " + pdf_path.stem).lower()
+    for key, bank in _MAP.items():
+        if key in name:
+            return bank
+    return "Unknown"
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Loan Advisor bootstrap")
-    parser.add_argument("--process-pdfs", action="store_true",
-                        help="Run PDF pipeline before indexing (USE_NVIDIA_PDF controls NVIDIA vs fallback)")
-    parser.add_argument("--force",        action="store_true",
-                        help="Force reprocess PDFs even if cached")
+    parser = argparse.ArgumentParser(description="Loan Advisor Bootstrap v3")
+    parser.add_argument("--force",       action="store_true", help="Reprocess all PDFs")
+    parser.add_argument("--file",        type=str,            help="Process single PDF")
+    parser.add_argument("--check-deps",  action="store_true", help="Check optional dependencies")
+    parser.add_argument("--data-dir",    default=None)
+    parser.add_argument("--output-dir",  default=None)
     args = parser.parse_args()
 
-    print("=" * 60)
-    print("Loan Policy Advisor — Bootstrap v2")
-    print("=" * 60)
-
-    # ── Step 1: PDF processing (optional) ─────────────────────────────────
-    if args.process_pdfs:
-        from pdf_pipeline import PDFPipeline
-        from config import USE_NVIDIA_PDF
-
-        pdf_files = list(DATA_DIR.rglob("*.pdf"))
-        if pdf_files:
-            print(f"\n[1] Processing {len(pdf_files)} PDF file(s)…")
-            mode = "NVIDIA Page Elements" if USE_NVIDIA_PDF else "pdfplumber fallback"
-            print(f"    Mode: {mode}")
-
-            pipeline = PDFPipeline(processed_dir=PROCESSED_DATA_DIR)
-            total_chunks = 0
-            for pdf_path in sorted(pdf_files):
-                if args.force:
-                    cache = PROCESSED_DATA_DIR / (pdf_path.stem + ".json")
-                    if cache.exists():
-                        cache.unlink()
-                try:
-                    chunks = pipeline.process(str(pdf_path))
-                    print(f"    ✅ {pdf_path.name}: {len(chunks)} chunks [{chunks[0].bank if chunks else 'Unknown'}]")
-                    total_chunks += len(chunks)
-                except Exception as e:
-                    print(f"    ❌ {pdf_path.name}: {e}")
-            print(f"    Total: {total_chunks} structured chunks")
-        else:
-            print("\n[1] No PDF files found — skipping PDF processing")
-    else:
-        step = "[1]" if args.process_pdfs else "[1]"
-        print(f"\n{step} PDF processing skipped (pass --process-pdfs to enable)")
-
-    # ── Step 2: Load documents ─────────────────────────────────────────────
-    from services.retrieval import RetrievalService
-
-    print("\n[2] Loading documents (structured JSON + plain text)…")
-    retrieval = RetrievalService()
-    count     = retrieval.load_documents()
-
-    n_folders = len(list(DATA_DIR.iterdir()))
-    n_json    = len(list(PROCESSED_DATA_DIR.glob("*.json"))) if PROCESSED_DATA_DIR.exists() else 0
-    print(f"    Loaded {count} chunks  ({n_json} structured JSON + plain text from {n_folders} folders)")
-
-    if count == 0:
-        print("\n⚠️  No documents found. Make sure data/ folders contain .txt or .pdf files.")
+    if args.check_deps:
+        check_dependencies()
         return
 
-    # ── Step 3: Build FAISS index ──────────────────────────────────────────
-    print("\n[3] Building FAISS index…")
-    retrieval.build_index(save=True)
+    from config import DATA_DIR, PROCESSED_DATA_DIR, FAISS_INDEX_DIR
 
-    print("\n✅ Bootstrap complete!")
-    print(f"   Index saved to models/index.faiss")
-    print(f"   Total chunks: {count}")
+    data_dir      = Path(args.data_dir)   if args.data_dir   else DATA_DIR
+    processed_dir = Path(args.output_dir) if args.output_dir else PROCESSED_DATA_DIR
+
+    print("=" * 65)
+    print("  Loan Advisor — Bootstrap v3 (Hybrid Extraction)")
+    print("=" * 65)
+    print(f"  Data dir:    {data_dir}")
+    print(f"  Output dir:  {processed_dir}")
+    print(f"  Index dir:   {FAISS_INDEX_DIR}")
+    print(f"  Force:       {args.force}")
+    print()
+
+    if args.file:
+        # Single file mode
+        from pdf_pipeline.extractor import extract_pdf
+        from pdf_pipeline.chunker   import chunk_document
+
+        pdf_path = Path(args.file)
+        bank = _detect_bank(pdf_path)
+        doc  = extract_pdf(pdf_path, bank=bank)
+        chunks = chunk_document(doc)
+
+        print(f"\n  File:     {pdf_path.name}")
+        print(f"  Bank:     {bank}")
+        print(f"  Scanned:  {doc.is_scanned}")
+        print(f"  Method:   {doc.extraction_method}")
+        print(f"  Pages:    {len(doc.pages)}")
+        print(f"  Chunks:   {len(chunks)}")
+        print(f"  Chars:    {doc.total_chars}")
+        if chunks:
+            print(f"\n  Sample chunk [p{chunks[0].page_number}|{chunks[0].doc_type}]:")
+            print(f"  {chunks[0].text[:200]}")
+        return
+
+    # Batch mode
+    print("[1] Extracting PDFs…")
+    chunks = process_pdfs(data_dir, processed_dir, force=args.force)
+
+    if not chunks:
+        print("\n⚠️  No chunks extracted. Add PDF files to the data/ directory.")
+        return
+
+    print(f"\n    Total chunks: {len(chunks)}")
+
+    print("\n[2] Building FAISS + BM25 index…")
+    build_index(chunks, FAISS_INDEX_DIR)
+
+    print("\n✅  Bootstrap complete!")
     print("\nStart the API:")
     print("   uvicorn api.main:app --reload --port 8000")
+
 
 if __name__ == "__main__":
     main()
