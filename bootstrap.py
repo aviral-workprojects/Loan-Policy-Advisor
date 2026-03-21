@@ -163,14 +163,33 @@ def process_pdfs(data_dir: Path, processed_dir: Path, force: bool = False) -> li
 
 
 def build_index(chunks, index_dir: Path) -> None:
-    """Build FAISS + BM25 index from chunks and save to disk."""
-    from pdf_pipeline.retriever import RetrievalService, DocChunk
-    from config import EMBEDDING_DIM
+    """
+    Build FAISS + BM25 index from chunks and save to disk.
 
-    svc = RetrievalService(index_dir=index_dir, embed_dim=int(EMBEDDING_DIM))
+    Detects the actual embedding dimension from the embedder that was
+    selected (NVIDIA=1024, local sentence-transformers=384). This prevents
+    a dim mismatch crash when NVIDIA fails and the fallback kicks in.
+    """
+    from pdf_pipeline.retriever  import RetrievalService
+    from pdf_pipeline.embeddings import get_embedder
+
+    # Build embedder first so we know the real dim before creating the index
+    embedder = get_embedder()
+
+    # Probe dimension with a single test encode
+    try:
+        test_vec = embedder.encode(["test"], normalize_embeddings=False)
+        actual_dim = test_vec.shape[1]
+        logger.info("✅  Embedder ready — dim=%d", actual_dim)
+    except Exception as e:
+        logger.error("❌  Cannot determine embedding dimension: %s", e)
+        raise
+
+    svc = RetrievalService(index_dir=index_dir, embed_dim=actual_dim)
+    svc._embedder = embedder   # inject the already-initialised embedder
     svc.load_chunks(chunks)
     svc.build_index(save=True)
-    logger.info("✅  Index saved → %s  (%d chunks)", index_dir, len(chunks))
+    logger.info("✅  Index saved → %s  (%d chunks, dim=%d)", index_dir, len(chunks), actual_dim)
 
 
 def _detect_bank(pdf_path: Path) -> str:

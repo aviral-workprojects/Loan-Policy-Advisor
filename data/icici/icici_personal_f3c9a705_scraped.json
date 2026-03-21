@@ -1,0 +1,58 @@
+{
+  "bank": "ICICI",
+  "loan_type": "personal",
+  "source_url": "https://www.icicibank.com/personal-banking/loans/personal-loan/eligibility",
+  "scraped_at": 1774078671.2009547,
+  "interest_rate": [
+    7.2,
+    7.2
+  ],
+  "processing_fee": null,
+  "processing_fee_pct": null,
+  "foreclosure_fee": null,
+  "late_fee": null,
+  "min_income": 30000.0,
+  "max_income": null,
+  "age_range": [
+    20,
+    58
+  ],
+  "employment_type": [
+    "salaried"
+  ],
+  "min_cibil": null,
+  "min_experience": null,
+  "loan_amount": [
+    50.0,
+    50.0
+  ],
+  "tenure": [
+    72,
+    72
+  ],
+  "content": "ICICI Bank Personal Loan Eligibility The ICICI Bank Personal Loan Eligibility Calculator helps you to determine the maximum loan amount you can avail from us. It takes into account your income, repayment capacity, credit history and existing liabilities. APPLY NOW Personal Loan Eligibility Criteria for Salaried Individuals Personal Loan eligibility criteria for Salaried individuals Age: Between 20 and 58 years Net salary**: Minimum monthly income of ₹30,000 Total years of work experience: 2 years **The minimum salary requirement will differ depending on the profile (type of employer, having a relationship with ICICI Bank etc.) of the customer. APPLY NOW Personal Loan Eligibility Criteria for Self Employed Individuals Can I get a Personal Loan if my monthly salary is ₹30,000?",
+  "features": [
+    "Age: Between 20 and 58 years",
+    "Net salary**: Minimum monthly income of ₹30,000",
+    "Total years of work experience: 2 years",
+    "No collateral required Secure a Personal Loan without the need to pledge any collateral, simplifying the borrowing process and making it hassle-free",
+    "Loan amount up to ₹ 50 lakh Apply for a Loan up to ₹ 50 lakh; 100% digitally.",
+    "Fixed interest rates Benefit from stable and predictable interest rates that ensure consistency in your monthly payments."
+  ],
+  "key_facts": [
+    "ICICI Bank Personal Loan Eligibility The ICICI Bank Personal Loan Eligibility Calculator helps you to determine the maximum loan amount you can avail from us. It takes into account your income, repayment capacity, credit history and existing liabilities. APPLY NOW",
+    "Personal Loan Eligibility Criteria for Salaried Individuals",
+    "Personal Loan eligibility criteria for Salaried individuals Age: Between 20 and 58 years Net salary**: Minimum monthly income of ₹30,000 Total years of work experience: 2 years **The minimum salary requirement will differ depending on the profile (type of employer, having a relationship with ICICI Bank etc.) of the customer. APPLY NOW",
+    "Personal Loan Eligibility Criteria for Self Employed Individuals",
+    "Can I get a Personal Loan if my monthly salary is ₹30,000?",
+    "How much Personal Loan am I eligible for based on my salary?",
+    "Will my Personal Loan eligibility differ if I have a salary account in ICICI Bank?",
+    "How can my current debt status affect my eligibility for a Personal Loan?",
+    "What are the benefits of using a Personal Loan eligibility calculator?",
+    "Are self-employed individuals eligible for a Personal Loan?"
+  ],
+  "content_hash": "736e9e93f7023cee",
+  "extraction_method": "sections,meta,body,links",
+  "confidence": 0.5,
+  "_written_at": "2026-03-21T07:37:51Z"
+}

@@ -1,0 +1,55 @@
+{
+  "bank": "ICICI",
+  "loan_type": "personal",
+  "source_url": "https://www.icicibank.com/personal-banking/loans/personal-loan/emi-calculator",
+  "scraped_at": 1774078696.0022042,
+  "interest_rate": [
+    7.2,
+    7.2
+  ],
+  "processing_fee": null,
+  "processing_fee_pct": null,
+  "foreclosure_fee": null,
+  "late_fee": null,
+  "min_income": null,
+  "max_income": null,
+  "age_range": [
+    20,
+    80
+  ],
+  "employment_type": [
+    "salaried"
+  ],
+  "min_cibil": null,
+  "min_experience": null,
+  "loan_amount": [],
+  "tenure": [],
+  "content": "Benefits of Using Personal Loan EMI Calculator ICICI Bank What are the benefits of using a Personal Loan EMI Calculator? What is the minimum salary requirement for a Rs 20 lakh Personal Loan? Can I use the Personal Loan EMI Calculator to check different loan amounts? Personal Loan EMI calculator helps you to calculate monthly EMI amount & interest payable. Use ICICI Bank’s Personal Loan Calculator to know your EMI.",
+  "features": [
+    "Quick results: It provides a quick EMI amount, helping you avoid manual calculation errors.",
+    "Time-saving: You can check your Monthly EMI and the total payable amount in seconds without complex formulas or long calculations.",
+    "User-friendly: The calculator is easy to use and can be accessed anytime on your phone or computer by entering just a few details.",
+    "Easy comparison: You can compare EMIs from different lenders to choose an affordable Personal Loan option.",
+    "Better financial planning: You can adjust the tenure and amount to find an option that suits your requirements for effective financial planning.",
+    "Wide range of loan amounts and tenures: Apply for a Personal Loan for any amount between ₹50,000 to ₹50,00,000 and select a tenure (i.e. repayment period) between 12 months and 72 months.",
+    "Quickonline application through the ICICI Bank website or ICICI Bank's iMobile app, with minimal documents.",
+    "After approval, the sanctioned amount is deposited directly into your savings account so that you can use the funds quickly, as required.",
+    "Get options to prepay your loan without extra charges and thus, manage your repayment as per your convenience.",
+    "It simplifies financial planning.",
+    "It accurately determines monthly instalments.",
+    "It ensures better budget management.",
+    "It helps in making informed decisions."
+  ],
+  "key_facts": [
+    "Benefits of Using Personal Loan EMI Calculator ICICI Bank",
+    "What are the benefits of using a Personal Loan EMI Calculator?",
+    "What is the minimum salary requirement for a Rs 20 lakh Personal Loan?",
+    "Can I use the Personal Loan EMI Calculator to check different loan amounts?",
+    "Personal Loan EMI calculator helps you to calculate monthly EMI amount & interest payable. Use ICICI Bank’s Personal Loan Calculator to know your EMI.",
+    "Personal Loan EMI calculator helps you to calculate monthly EMI amount & interest payable. Use ICICI Bank’s Personal Loan Calculator to know your EMI."
+  ],
+  "content_hash": "93ecc97ca1a24066",
+  "extraction_method": "sections,meta,body,links",
+  "confidence": 0.0,
+  "_written_at": "2026-03-21T07:38:16Z"
+}

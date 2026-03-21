@@ -1,0 +1,68 @@
+{
+  "total": 26,
+  "scraped_at": "2026-03-21T07:38:18Z",
+  "banks": {
+    "ICICI": {
+      "count": 8,
+      "has_rate": 8,
+      "has_income": 2,
+      "has_cibil": 1,
+      "avg_confidence": 0.41,
+      "urls": [
+        "https://www.icicibank.com/personal-banking/loans/personal-loan/eligibility",
+        "https://www.icicibank.com/personal-banking/loans/personal-loan",
+        "https://www.icicibank.com/personal-banking/loans/personal-loan/interest-rates",
+        "https://www.icicibank.com/personal-banking/loans/personal-loan/service-charges",
+        "https://www.icicibank.com/personal-banking/loans/personal-loan/eligibility/eligibility-faqs",
+        "https://www.icicibank.com/personal-banking/loans/personal-loan/personal-loan-for-medical-emergency",
+        "https://www.icicibank.com/personal-banking/loans/personal-loan/marriage-loans",
+        "https://www.icicibank.com/personal-banking/loans/personal-loan/emi-calculator"
+      ]
+    },
+    "Paisabazaar": {
+      "count": 3,
+      "has_rate": 2,
+      "has_income": 0,
+      "has_cibil": 1,
+      "avg_confidence": 0.37,
+      "urls": [
+        "https://www.paisabazaar.com/personal-loan/",
+        "https://www.paisabazaar.com/cashback-christmas-cheer-terms-and-conditions/",
+        "https://www.paisabazaar.com/home-loan/"
+      ]
+    },
+    "SBI": {
+      "count": 7,
+      "has_rate": 6,
+      "has_income": 1,
+      "has_cibil": 0,
+      "avg_confidence": 0.35,
+      "urls": [
+        "https://sbi.co.in/web/personal-banking/loans/personal-loans",
+        "https://sbi.co.in/web/personal-banking/loans/personal-loans/xpress-credit",
+        "https://sbi.co.in/web/personal-banking/loans/personal-loans/sbi-personal-loan",
+        "https://sbi.co.in/web/personal-banking/loans/personal-loans/terms-conditions",
+        "https://sbi.co.in/web/personal-banking/loans/personal-loans/pre-approved-personal-loans",
+        "https://sbi.co.in/web/personal-banking/loans/personal-loans/real-time-xpress-credit",
+        "https://sbi.co.in/web/interest-rates/interest-rates/loan-schemes-interest-rates/home-loans-interest-rates-current"
+      ]
+    },
+    "BankBazaar": {
+      "count": 8,
+      "has_rate": 8,
+      "has_income": 1,
+      "has_cibil": 2,
+      "avg_confidence": 0.38,
+      "urls": [
+        "https://www.bankbazaar.com/personal-loan.html",
+        "https://www.bankbazaar.com/personal-loan-interest-rate.html",
+        "https://www.bankbazaar.com/personal-loan-eligibility.html",
+        "https://www.bankbazaar.com/home-loan/emi-calculator.html",
+        "https://www.bankbazaar.com/credit-card.html",
+        "https://www.bankbazaar.com/home-loan.html",
+        "https://www.bankbazaar.com/home-loan-interest-rate.html",
+        "https://www.bankbazaar.com/home-loan-eligibility.html"
+      ]
+    }
+  }
+}

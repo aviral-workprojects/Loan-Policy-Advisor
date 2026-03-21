@@ -1,0 +1,28 @@
+{
+  "bank": "SBI",
+  "loan_type": "personal",
+  "source_url": "https://sbi.co.in/web/personal-banking/loans/personal-loans/xpress-credit",
+  "scraped_at": 1774078672.440474,
+  "interest_rate": [],
+  "processing_fee": null,
+  "processing_fee_pct": null,
+  "foreclosure_fee": null,
+  "late_fee": null,
+  "min_income": null,
+  "max_income": null,
+  "age_range": [],
+  "employment_type": [],
+  "min_cibil": null,
+  "min_experience": null,
+  "loan_amount": [],
+  "tenure": [],
+  "content": "4 0 4 Page Not Found Sorry, we are unable to process your request. The requested URL was not found on this server. Go Back To Homepage Page Not Found Sorry, we are unable to process your request. The requested URL was not found on this server. Go Back To Homepage",
+  "features": [],
+  "key_facts": [
+    "Page Not Found Sorry, we are unable to process your request. The requested URL was not found on this server. Go Back To Homepage"
+  ],
+  "content_hash": "a1e316a05d32c8ed",
+  "extraction_method": "sections,body",
+  "confidence": 0.0,
+  "_written_at": "2026-03-21T07:37:52Z"
+}

@@ -1,0 +1,55 @@
+{
+  "bank": "ICICI",
+  "loan_type": "personal",
+  "source_url": "https://www.icicibank.com/personal-banking/loans/personal-loan",
+  "scraped_at": 1774078671.5122151,
+  "interest_rate": [
+    2.0,
+    9.99
+  ],
+  "processing_fee": null,
+  "processing_fee_pct": null,
+  "foreclosure_fee": null,
+  "late_fee": null,
+  "min_income": null,
+  "max_income": null,
+  "age_range": [
+    20,
+    58
+  ],
+  "employment_type": [
+    "salaried",
+    "self_employed",
+    "nri"
+  ],
+  "min_cibil": null,
+  "min_experience": null,
+  "loan_amount": [
+    50.0,
+    50.0
+  ],
+  "tenure": [
+    72,
+    72
+  ],
+  "content": "Loans Personal Loan Apply for Personal Loan Online up to ₹50 lakh Dream big and achieve more with a Personal Loan from ICICI Bank. Take advantage of our competitive rates starting at 9.99%* per annum, digital application processes, flexible tenure up to 72 months and quick loan approvals. Apply for Instant Personal Loan Online Up to ₹50 Lakh with ICICI Bank today! Read Less Fixed interest rates No Collateral required Know more APPLY NOW SAVE 135,356 PEOPLE ARE INTERESTED Documents Required to Apply for Personal Loan Online Do I need to provide a security or collateral to apply for a Personal Loan with ICICI Bank? Do I have to pay any additional charges for an Instant Personal Loan? What are the benefits of applying for a Personal Loan online? What is the CIBIL score required to get a Personal Loan?",
+  "features": [
+    "135,356 PEOPLE ARE INTERESTED",
+    "No collateral required Secure a Personal Loan without the need to pledge any collateral, simplifying the borrowing process and making it hassle-free",
+    "Loan Amount up to ₹50 lakh Apply for a Loan up to ₹ 50 lakh; 100% digitally.",
+    "Fixed Interest Rates Benefit from stable & predictable interest rates that ensure consistency in your monthly payments."
+  ],
+  "key_facts": [
+    "Documents Required to Apply for Personal Loan Online",
+    "Do I need to provide a security or collateral to apply for a Personal Loan with ICICI Bank?",
+    "Do I have to pay any additional charges for an Instant Personal Loan?",
+    "What are the benefits of applying for a Personal Loan online?",
+    "What is the CIBIL score required to get a Personal Loan?",
+    "Apply for Instant Personal Loan Online up to ₹50 Lakh. Enjoy low interest rates, quick approval, flexible tenures, and digital application processes. Get an  instant loan today!",
+    "Apply for Instant Personal Loan Online up to ₹50 Lakh. Enjoy low interest rates, quick approval, flexible tenures, and digital application processes. Get an  instant loan today!"
+  ],
+  "content_hash": "50086f524e8c19b1",
+  "extraction_method": "sections,regex,meta,body,links",
+  "confidence": 0.62,
+  "_written_at": "2026-03-21T07:37:51Z"
+}

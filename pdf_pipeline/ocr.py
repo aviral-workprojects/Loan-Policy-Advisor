@@ -49,13 +49,13 @@ def _get_paddle():
         return None
     if _paddle_instance is None:
         logger.info("[OCR] Initialising PaddleOCR (first call)…")
+        # PaddleOCR 2.x constructor only takes: use_angle_cls, lang, use_gpu, show_log
+        # det/rec/cls are NOT constructor args — they are passed to .ocr() call instead.
+        # Passing them to the constructor causes: "Unknown argument: det"
         _paddle_instance = _PaddleOCRClass(
             use_angle_cls=True,
             lang="en",
             use_gpu=False,
-            det=True,
-            rec=True,
-            cls=True,
             show_log=False,
         )
         logger.info("[OCR] PaddleOCR ready")
@@ -143,7 +143,7 @@ def paddle_ocr_page(img_bytes: bytes) -> str:
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         arr = np.array(img)
 
-        result = paddle.ocr(arr, cls=True)
+        result = paddle.ocr(arr, det=True, rec=True, cls=True)
         if not result or not result[0]:
             logger.debug("[OCR] PaddleOCR returned empty result")
             return ""

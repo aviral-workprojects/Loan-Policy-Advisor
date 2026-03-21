@@ -1,0 +1,61 @@
+{
+  "bank": "BankBazaar",
+  "loan_type": "personal",
+  "source_url": "https://www.bankbazaar.com/home-loan/emi-calculator.html",
+  "scraped_at": 1774078698.3054988,
+  "interest_rate": [
+    8.65,
+    8.65
+  ],
+  "processing_fee": null,
+  "processing_fee_pct": null,
+  "foreclosure_fee": null,
+  "late_fee": null,
+  "min_income": null,
+  "max_income": null,
+  "age_range": [],
+  "employment_type": [
+    "self_employed",
+    "government"
+  ],
+  "min_cibil": null,
+  "min_experience": null,
+  "loan_amount": [],
+  "tenure": [],
+  "content": "Benefits of Using BankBazaar’s EMI Calculator There are many benefits of using the home loan EMI calculator tool provided by BankBazaar. They are listed below: Easy process: You only have to enter the loan amount, interest rate, processing fee (if available), and tenure. No complicated calculations or complex mathematics. The actual computation will be taken care of by the home loan emi calculator Advantages of using BankBazaar Home loan EMI calculator: The advantages of using the Home Loan EMI calculator offered by BankBazaar are as follows: You can easily use this calculator and get the exact amount of EMI that has to be paid. The entire Home Loan EMI calculation is completed within seconds. You need not remember or memorise the EMI calculation formula to use the BankBazaar Home Loan EMI  What are the Charges Applicable on Missing your Home Loan Installment(s)? The following is the list of applicable charges on home loan installments that you have missed to pay on its due date: Cheque/NACH/SI Bounce Charges: Applied when a home loan EMI payment fails due to insufficient funds or account closure. This is a fixed charge imposed each time an automated EMI deduction fails. Late Payment Can Home Loan EMI Amount Change During the Loan Tenure? Here are the details that should be remembered about change of home loan EMI amount during loan tenure: Step-Up or Step-Down Loans: Flexible EMIs, like step-up or step-down property loans, lead to changes in the housing loan EMI. Step-down loans see EMI decrease over time, while step-up loans gradually increase EMIs over the tenure Partly Dis Calculate your Home Loan EMI, interest, and tenure instantly with BankBazaar's EMI Calculator. Plan your finances better with accurate monthly EMI estimates.",
+  "features": [
+    "Easy process: You only have to enter the loan amount, interest rate, processing fee (if available), and tenure. No complicated calculations or complex mathematics. The actual computation will be taken care of by the home loan emi calculator.",
+    "Comparing loan offers: You can use the home loan calculator to compare loan offers from various banks . The results will show you the total cost of each loan along with their respective EMIs. This will help you narrow down the most feasible option.",
+    "Helps with loan management: Sometimes, while paying your EMIs, you may have some extra funds to make prepayments. If you want to revisit the financials and see how prepayments can help to pay off the loan before the term ends, the home loan EMI calculator can help you do that.",
+    "You can easily use this calculator and get the exact amount of EMI that has to be paid.",
+    "The entire Home Loan EMI calculation is completed within seconds.",
+    "You need not remember or memorise the EMI calculation formula to use the BankBazaar Home Loan EMI calculator",
+    "This BankBazaar Home Loan EMI calculator can be used any number of times without paying any fee.",
+    "You don’t have to complete any registration process to use the BankBazaar Home Loan EMI calculator.",
+    "There is no hidden cost involved in using the BankBazaar Home Loan EMI calculator.",
+    "Cheque/NACH/SI Bounce Charges: Applied when a home loan EMI payment fails due to insufficient funds or account closure. This is a fixed charge imposed each time an automated EMI deduction fails.",
+    "Late Payment Charges: Fixed amount or a percentage of the unpaid amount is charged.",
+    "Penal Interest Charges: Applied on the unpaid EMI amount for a home loan as a fixed percentage payable per month on the unpaid principal amount until the due EMI is paid.",
+    "Step-Up or Step-Down Loans:",
+    "Flexible EMIs, like step-up or step-down property loans, lead to changes in the housing loan EMI.",
+    "Step-down loans see EMI decrease over time, while step-up loans gradually increase EMIs over the tenure",
+    "Partly Disbursed Loan:",
+    "With partly disbursed loans, pre-EMIs rise with each disbursement.",
+    "Loan Prepayment:",
+    "Prepayments affect home loan EMIs.",
+    "Choose to either reduce EMI for the same tenure or shorten the tenure with constant EMIs."
+  ],
+  "key_facts": [
+    "Benefits of Using BankBazaar’s EMI Calculator There are many benefits of using the home loan EMI calculator tool provided by BankBazaar. They are listed below: Easy process: You only have to enter the loan amount, interest rate, processing fee (if available), and tenure. No complicated calculations or complex mathematics. The actual computation will be taken care of by the home loan emi calculator",
+    "Advantages of using BankBazaar Home loan EMI calculator: The advantages of using the Home Loan EMI calculator offered by BankBazaar are as follows: You can easily use this calculator and get the exact amount of EMI that has to be paid. The entire Home Loan EMI calculation is completed within seconds. You need not remember or memorise the EMI calculation formula to use the BankBazaar Home Loan EMI ",
+    "What are the Charges Applicable on Missing your Home Loan Installment(s)? The following is the list of applicable charges on home loan installments that you have missed to pay on its due date: Cheque/NACH/SI Bounce Charges: Applied when a home loan EMI payment fails due to insufficient funds or account closure. This is a fixed charge imposed each time an automated EMI deduction fails. Late Payment",
+    "Can Home Loan EMI Amount Change During the Loan Tenure? Here are the details that should be remembered about change of home loan EMI amount during loan tenure: Step-Up or Step-Down Loans: Flexible EMIs, like step-up or step-down property loans, lead to changes in the housing loan EMI. Step-down loans see EMI decrease over time, while step-up loans gradually increase EMIs over the tenure Partly Dis",
+    "Calculate your Home Loan EMI, interest, and tenure instantly with BankBazaar's EMI Calculator. Plan your finances better with accurate monthly EMI estimates.",
+    "Calculate your Home Loan EMI, interest, and tenure instantly with BankBazaar's EMI Calculator. Plan your finances better with accurate monthly EMI estimates.",
+    "Calculate your Home Loan EMI, interest, and tenure instantly with BankBazaar's EMI Calculator. Plan your finances better with accurate monthly EMI estimates."
+  ],
+  "content_hash": "fad163424d2f09ff",
+  "extraction_method": "sections,regex,meta,body,links",
+  "confidence": 0.25,
+  "_written_at": "2026-03-21T07:38:18Z"
+}

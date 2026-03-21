@@ -1,0 +1,70 @@
+{
+  "bank": "BankBazaar",
+  "loan_type": "personal",
+  "source_url": "https://www.bankbazaar.com/home-loan-eligibility.html",
+  "scraped_at": 1774078698.8944223,
+  "interest_rate": [
+    90.0,
+    90.0
+  ],
+  "processing_fee": null,
+  "processing_fee_pct": null,
+  "foreclosure_fee": null,
+  "late_fee": null,
+  "min_income": null,
+  "max_income": null,
+  "age_range": [
+    18,
+    70
+  ],
+  "employment_type": [
+    "salaried",
+    "nri"
+  ],
+  "min_cibil": 750,
+  "min_experience": null,
+  "loan_amount": [],
+  "tenure": [
+    360,
+    360
+  ],
+  "content": "Age: Income | 18 - 70 years: Rs.25,000 Age: Credit Score | 18 - 70 years: Above 750 Age: Employment Status | 18 - 70 years: Salaried or Non-Salaried Age: Work Experience | 18 - 70 years: 2 Years Age: Loan Amount | 18 - 70 years: Decided by the lender Age: Residence Type | 18 - 70 years: Permanent resident or Non-resident Indian (NRI) Age: LTV Ratio | 18 - 70 years: Up to 90% Age: Property Type | 18 - 70 years: Completed /Under Construction Project, Land/Plot, build on own Land, Buy Land and Build Home HDFC Home Loan Eligibility: SBI Home Loan Eligibility | Age: 18 to 70 years Max loan Tenure: Up to 30 years Loan Amount: Up to Rs.10 crore: Age: 18 to 70 years Max loan Tenure: Up to 30 years Loan Amount: Decided by the lender HDFC Home Loan Eligibility: Axis Bank Home Loan Eligibility | Age: 18 to 70 years Max loan Tenure: Up to 30 years Loan Amount: Up to Rs.10 crore: Age: 21 to 60 years Max loan Tenure: Up to 30 years Loan Amount: Up to Rs.3 crore HDFC Home Loan Eligibility: LIC HFL Home Loan Eligibility | Age: 18 to 70 years Max loan Tenure: Up to 30 years Loan Amount: Up to Rs.10 crore: Age: 21 to 60 years Max loan Tenure: Up to 30 years Loan Amount: Rs.1 lakh onwards HDFC Home Loan Eligibility: BoB Home Loan Eligibility | Age: 18 to 70 years Max loan Tenure: Up to 30 years Loan Amount: Up to Rs.10 crore: Age: 21 to 70 years Max loan Tenure: Up to 30 years Loan Amount: Up to Rs.10 crore HDFC Home Loan Eligibility: PNB Home Loan Eligibility | Age: 18 to 70 years Max loan Tenure: Up Income: Basic | Amount: 32,000 | Deductions: Income Tax | Amount: 3,300 Income: HRA | Amount: 900 | Deductions: Provident Fund | Amount: 2,200 Income: Conveyance | Amount: 10,000 | Deductions: - | Amount: - Income: LTA | Amount: 9,000 | Deductions: - | Amount: - Income: Special Allowance | Amount: 55,000 | Deductions: - | Amount: - Income: Medical expenses | Amount: 2,000 | Deductions: - | Amount: - Income: Total | Amount: 1,08,900 | Deductions: Net Income | Amount: 1,03,400 Eligibility Criteria for Home Loan Age 18 - 70 years Income Rs.25,000 Credit Score Above 750 Employment Status Salaried or Non-Salaried Work Experience 2 Years Loan Amount Decided by the lender Residence Type Permanent resident or Non-resident Indian (NRI) LTV Ratio Up to 90% Property Type Completed /Under Construction Project, Land/Plot, build on own Land, Buy Land and Build Home Note: Loan eligi Home Loan Eligibility for Banks in 2026 HDFC Home Loan Eligibility Age: 18 to 70 years Max loan Tenure: Up to 30 years Loan Amount: Up to Rs.10 crore SBI Home Loan Eligibility Age: 18 to 70 years Max loan Tenure: Up to 30 years Loan Amount: Decided by the lender Axis Bank Home Loan Eligibility Age: 21 to 60 years Max loan Tenure: Up to 30 years Loan Amount: Up to Rs.3 crore LIC HFL Home Loan Eligi How to Check Home Loan Eligibility with BankBazaar? Here is the process: Visit the BankBazaar website and go to the Home Loan Eligibility Calculator. Choose your type of employment from the given options. Enter your gross monthly income and click 'Continue'. Enter the PIN code of your current address. Select the purpose of your home loan. Enter your mobile number. Check the box to give contact per How Home Loan Eligibility is Calculated? Chandra Patra is an employee of a leading company in India. His salary break up is mentioned below: Income Amount Deductions Amount Basic 32,000 Income Tax 3,300 HRA 900 Provident Fund 2,200 Conveyance 10,000 - - LTA 9,000 - - Special Allowance 55,000 - - Medical expenses 2,000 - - Total 1,08,900 Net Income 1,03,400 Check Your Credit Score for Free Let us c What are the Factors that Affect Home Loan Eligibility Age : Younger people (20s-30s) usually get longer loan terms; it’s harder for people over 40 to get long-term loans. Income : A steady income is important, whether you’re salaried, self-employed, or a professional. Documents : You’ll need to show things like salary slips, tax returns, and bank statements to prove your income. Interest Rate : L",
+  "features": [
+    "Age: 18 to 70 years",
+    "Max loan Tenure: Up to 30 years",
+    "Loan Amount: Up to Rs.10 crore",
+    "Loan Amount: Decided by the lender",
+    "Age: 21 to 60 years",
+    "Loan Amount: Up to Rs.3 crore",
+    "Loan Amount: Rs.1 lakh onwards",
+    "Age: 21 to 70 years",
+    "Loan Amount: Up to 90% of the market value",
+    "Age: 21 to 55 years",
+    "Age: 22 to 70 years",
+    "Age: 21 to 65 years",
+    "Loan Amount: Up to Rs.15 crore",
+    "Visit the BankBazaar website and go to the Home Loan Eligibility Calculator.",
+    "Choose your type of employment from the given options.",
+    "Enter your gross monthly income and click 'Continue'.",
+    "Enter the PIN code of your current address.",
+    "Select the purpose of your home loan.",
+    "Enter your mobile number.",
+    "Check the box to give contact permission."
+  ],
+  "key_facts": [
+    "Eligibility Criteria for Home Loan Age 18 - 70 years Income Rs.25,000 Credit Score Above 750 Employment Status Salaried or Non-Salaried Work Experience 2 Years Loan Amount Decided by the lender Residence Type Permanent resident or Non-resident Indian (NRI) LTV Ratio Up to 90% Property Type Completed /Under Construction Project, Land/Plot, build on own Land, Buy Land and Build Home Note: Loan eligi",
+    "Home Loan Eligibility for Banks in 2026 HDFC Home Loan Eligibility Age: 18 to 70 years Max loan Tenure: Up to 30 years Loan Amount: Up to Rs.10 crore SBI Home Loan Eligibility Age: 18 to 70 years Max loan Tenure: Up to 30 years Loan Amount: Decided by the lender Axis Bank Home Loan Eligibility Age: 21 to 60 years Max loan Tenure: Up to 30 years Loan Amount: Up to Rs.3 crore LIC HFL Home Loan Eligi",
+    "How to Check Home Loan Eligibility with BankBazaar? Here is the process: Visit the BankBazaar website and go to the Home Loan Eligibility Calculator. Choose your type of employment from the given options. Enter your gross monthly income and click 'Continue'. Enter the PIN code of your current address. Select the purpose of your home loan. Enter your mobile number. Check the box to give contact per",
+    "How Home Loan Eligibility is Calculated? Chandra Patra is an employee of a leading company in India. His salary break up is mentioned below: Income Amount Deductions Amount Basic 32,000 Income Tax 3,300 HRA 900 Provident Fund 2,200 Conveyance 10,000 - - LTA 9,000 - - Special Allowance 55,000 - - Medical expenses 2,000 - - Total 1,08,900 Net Income 1,03,400 Check Your Credit Score for Free Let us c",
+    "What are the Factors that Affect Home Loan Eligibility Age : Younger people (20s-30s) usually get longer loan terms; it’s harder for people over 40 to get long-term loans. Income : A steady income is important, whether you’re salaried, self-employed, or a professional. Documents : You’ll need to show things like salary slips, tax returns, and bank statements to prove your income. Interest Rate : L",
+    "How to Check Home Loan Eligibility for Salaried and Self-Employed? Home loan rules are mostly the same for both salaried and self-employed people. But things like minimum income and work experience may be different. If you work for a private company, check with the bank to see how much income and job experience you need.",
+    "Tips to Boost Your Home Loan Eligibility Improve Your Credit Score : Pay your bills on time, use less of your credit limit, and avoid taking on too much new credit. Make a Bigger Down Payment : Putting more money upfront reduces how much you need to borrow and lowers your monthly payments. Reduce Your Debt-to-Income Ratio : Try to pay off existing debts or increase your income to show lenders you ",
+    "FAQs on Home Loan Eligibility Calculator How to Check Home Loan Eligibility Based on Salary? As mentioned earlier, home loan lenders determine the eligibility of an applicant for a home loan on the basis of their monthly income (in addition to other factors). The salary is taken into consideration to identify the loan repayment capability of the applicant. The LTV ratio or the Loan-to-Value ratio ",
+    "Home Loan Eligibility Calculator - Calculate your home loan eligibility, including minimum and maximum loan amounts for salaried and self-employed individuals.\n",
+    "Home Loan Eligibility Calculator - Calculate your home loan eligibility, including minimum and maximum loan amounts for salaried and self-employed individuals.\n"
+  ],
+  "content_hash": "953d8bf95a0924d6",
+  "extraction_method": "sections,tables,meta,body,links",
+  "confidence": 0.62,
+  "_written_at": "2026-03-21T07:38:18Z"
+}

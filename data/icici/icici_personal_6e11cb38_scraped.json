@@ -1,0 +1,47 @@
+{
+  "bank": "ICICI",
+  "loan_type": "personal",
+  "source_url": "https://www.icicibank.com/personal-banking/loans/personal-loan/marriage-loans",
+  "scraped_at": 1774078695.7265463,
+  "interest_rate": [
+    2.0,
+    9.99
+  ],
+  "processing_fee": null,
+  "processing_fee_pct": null,
+  "foreclosure_fee": null,
+  "late_fee": null,
+  "min_income": null,
+  "max_income": null,
+  "age_range": [
+    20,
+    58
+  ],
+  "employment_type": [
+    "salaried",
+    "self_employed"
+  ],
+  "min_cibil": null,
+  "min_experience": null,
+  "loan_amount": [],
+  "tenure": [],
+  "content": "Loans Personal Loan Marriage Loan Personal Loan for Wedding Plan the wedding you want with ICICI Bank Marriage Loan – up to ₹50 lakh, minimal paperwork, attractive interest rates and no collateral. Read Less Loans up to ₹50 lakh Attractive Interest Rates Minimal documentation No collateral required Know More APPLY SAVE 3,282 PEOPLE ARE INTERESTED How to Get Maximum Benefits of Personal Loan for Wedding Expenses How do I apply for a Personal Loan for marriage from ICICI Bank? What is the interest rate on a Personal Loan for marriage at ICICI Bank? What are the eligibility criteria for applying for a Personal Loan for marriage? How much can I borrow under a Personal Loan for marriage?",
+  "features": [
+    "Maximum Benefits"
+  ],
+  "key_facts": [
+    "How to Get Maximum Benefits of Personal Loan for Wedding Expenses",
+    "How do I apply for a Personal Loan for marriage from ICICI Bank?",
+    "What is the interest rate on a Personal Loan for marriage at ICICI Bank?",
+    "What are the eligibility criteria for applying for a Personal Loan for marriage?",
+    "How much can I borrow under a Personal Loan for marriage?",
+    "Are there any restrictions on how I can use a Personal Loan for marriage?",
+    "Can I foreclose or prepay a Personal Loan for marriage?",
+    "A personal loan for marriage is a simple way to cover costs. Check marriage loan eligibility, marriage loan interest rate, and apply for a wedding loan today.",
+    "A personal loan for marriage is a simple way to cover costs. Check marriage loan eligibility, marriage loan interest rate, and apply for a wedding loan today."
+  ],
+  "content_hash": "34c0b8579892653f",
+  "extraction_method": "sections,regex,meta,body,links",
+  "confidence": 0.38,
+  "_written_at": "2026-03-21T07:38:15Z"
+}

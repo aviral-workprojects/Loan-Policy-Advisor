@@ -1,0 +1,46 @@
+{
+  "bank": "ICICI",
+  "loan_type": "personal",
+  "source_url": "https://www.icicibank.com/personal-banking/loans/personal-loan/service-charges",
+  "scraped_at": 1774078694.9274464,
+  "interest_rate": [
+    0.99,
+    5.0
+  ],
+  "processing_fee": null,
+  "processing_fee_pct": null,
+  "foreclosure_fee": null,
+  "late_fee": null,
+  "min_income": null,
+  "max_income": null,
+  "age_range": [
+    24,
+    50
+  ],
+  "employment_type": [
+    "salaried",
+    "self_employed"
+  ],
+  "min_cibil": null,
+  "min_experience": null,
+  "loan_amount": [],
+  "tenure": [],
+  "content": "APPLY Loans Personal Loan Processing Fee & Services Charges Personal Loan Processing Fees and Charges ICICI Bank’s Personal Loans offer transparent fees and service charges, helping customers understand the costs involved at different stages of the loan. These charges may include processing fees, service-related charges, part-payment charges, prepayment or foreclosure charges and penal charges, as applicable. The amount and applicability of each charge depend on the loan terms, the borrower's profile, and prevailing policies. Some charges apply at the time of loan processing, while others may arise during the loan tenure based on repayment activity or service requests. All charges are subject to applicable taxes, statutory levies and stated terms and conditions. APPLY NOW Personal Loan Fees and Charges Penalty charges and service charges applicable for Personal Loans , Business Instalment Loans and Salary Overdraft: Sr. No. Types of charges Amount Service Charges 1 Loan processing charges (non-refundable). Up to 2% of the loan amount. 2 Repayment mode swap charges. ₹500 3 Loan cancellation charges. a. Nil, if the loan is cancelled within the free look or cooling off period (i.e. 15 days from the date of disbursement). The Processing Fee will be non-refundable. b. If the loan is cancelled after the cooling off period, a cancellation fee of ₹2,500 is applicable. 4 Prepayment charges or foreclosure charges. a. 3% on principal outstanding amount. b. Nil after 12 EMIs paid. c. For Business lakh (BIL/BL) <=50 Lakhs i.e. Booked under code ‘UP’, the FC to be considered as “NIL” if first EMI is paid. This is applicable only for Micro and Small enterprises only subject to Udyam Registration Certificate (URC) submission and not for Medium enterprises 5 Part payment charges. a. 3% for loans seasoning up to 24 months. b. Nil for loan seasoning above 24 months. 6 Salary Overdraft (Processing Fee). 0.99% of the limit amount subject to a minimum of ₹1,999 and maximum of ₹2,999. 7 Salary Overdraft (Annual renewal fee). ₹1,999 8 Cash transaction charges. ₹100 at the branch. 9 Duplicate NOC (No Objection Certificate) / NDC (No Dues Certificate) charges. ₹250 for physical printout at the branch. 10 Information utility charges (Only for corporate cases). ₹300 11 Prepayment statement charges. ₹200 for physical printout at the Branch. 12 Amortisation Schedule charges. ₹200 for physical printout at the Branch. 13 Loan recovery charges (if applicable). At actuals. Penal Charges 1 Cheque or Auto Debit or Electronic Clearing Service bounce charges (Late payment fee). ₹500 2 Charges for late payment. 5% per annum will be charged on the overdue EMI (Equated Monthly Instalment) until repayment. 3 Non Maintenance of Mode of Payment charges (NMMP). ₹800 4 Charge for unpaid interest amount or overdrawn amount. 5% per annum will be charged on the unpaid interest amount or on the overdrawn amount. Note 1. All the above charges are exclusive of Goods and Services Tax (GST). Applica Service Charges Sr. No.: 1 | Types of charges: Loan processing charges (non-refundable). | Amount: Up to 2% of the loan amount. Sr. No.: 2 | Types of charges: Repayment mode swap charges. | Amount: ₹500 Sr. No.: 3 | Types of charges: Loan cancellation charges. | Amount: a. Nil, if the loan is cancelled within the free look or cooling off period (i.e. 15 days from the date of disbursement). The Processing Fee will be non-refundable. b. If the loan is cancelled after the cooling off period, a cancellation fee of ₹2,500 is applicable. Sr. No.: 4 | Types of charges: Prepayment charges or foreclosure charges. | Amount: a. 3% on principal outstanding amount. b. Nil after 12 EMIs paid. c. For Business lakh (BIL/BL) <=50 Lakhs i.e. Booked under code ‘UP’, the FC to be considered as “NIL” if first EMI is paid. This is applicable only for Micro and Small enterprises only subject to Udyam Registration Certificate (URC) submission and not for Medium enterprises Sr. No.: 5 | Types of charges: Part",
+  "features": [],
+  "key_facts": [
+    "Personal Loan Processing Fees and Charges ICICI Bank’s Personal Loans offer transparent fees and service charges, helping customers understand the costs involved at different stages of the loan. These charges may include processing fees, service-related charges, part-payment charges, prepayment or foreclosure charges and penal charges, as applicable. The amount and applicability of each charge dep",
+    "Personal Loan Fees and Charges Penalty charges and service charges applicable for Personal Loans , Business Instalment Loans and Salary Overdraft: Sr. No. Types of charges Amount Service Charges 1 Loan processing charges (non-refundable). Up to 2% of the loan amount. 2 Repayment mode swap charges. ₹500 3 Loan cancellation charges. a. Nil, if the loan is cancelled within the free look or cooling of",
+    "What is the processing fee of ICICI Bank Personal Loan?",
+    "What are the pre-closure charges of ICICI Bank Personal Loan?",
+    "How is the Personal Loan processing fee calculated?",
+    "What is the Personal Loan processing fee for ICICI Bank?",
+    "Are the foreclosure charges applicable to all financial lenders?",
+    "What are the pre-closure charges on a Personal Loan?",
+    "Personal loan processing fee & service charges - Check ICICI Bank personal loan service charges including processing fees, prepayment charges, late payment charges, etc.",
+    "Car Loan Interest Rates: Get car loan at attractive Interest rate starting at 9.1%* in India. Apply for a loan now at the lowest car loan rates in India."
+  ],
+  "content_hash": "cddb693e06340057",
+  "extraction_method": "sections,tables,meta,body,links",
+  "confidence": 0.25,
+  "_written_at": "2026-03-21T07:38:15Z"
+}

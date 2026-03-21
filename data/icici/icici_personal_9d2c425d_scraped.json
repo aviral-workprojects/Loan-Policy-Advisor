@@ -1,0 +1,46 @@
+{
+  "bank": "ICICI",
+  "loan_type": "personal",
+  "source_url": "https://www.icicibank.com/personal-banking/loans/personal-loan/eligibility/eligibility-faqs",
+  "scraped_at": 1774078695.1835241,
+  "interest_rate": [
+    45.0,
+    50.0
+  ],
+  "processing_fee": null,
+  "processing_fee_pct": null,
+  "foreclosure_fee": null,
+  "late_fee": null,
+  "min_income": 30000.0,
+  "max_income": null,
+  "age_range": [
+    45,
+    50
+  ],
+  "employment_type": [
+    "salaried",
+    "self_employed"
+  ],
+  "min_cibil": 700,
+  "min_experience": null,
+  "loan_amount": [],
+  "tenure": [],
+  "content": "Loans Personal Loan Personal Loan Eligibility Calculator Eligibility FAQs Personal loan Eligibility FAQs Eligibility & Documentation EXPAND ALL What factors determine personal loan eligibility Eligibility depends on several key factors: • Credit Score (CIBIL) - Higher score leads to stronger eligibility. • Income level -Higher income makes you eligible for higher loan amount. • Employment type - Salaried makes you more eligible than Self-employed for instant loans. • Employer category - Category A companies get best offers. • Debt-to-Income ratio (DTI) - DTI < 45–50% preferred. • Age of 20–58 years is typical range. • Banking behavior - Stable deposits and no cheque bounces. What is the eligibility for salaried vs self-employed borrowers? Salaried Eligibility: • Salary: ₹20,000+ • Bureau score: 700+ • Salary credited to bank account • Minimal documentation Self-employed Eligibility: • Business vintage: 2-3 years • Bank statement with consistent cash flow • CIBIL score: 700+ • Latest ITR/GST returns What is the minimum salary needed for personal loan? Salary requirement differs across lenders: Banks: Minimum ₹20,000–₹25,000/month How age affects personal loan eligibility? Age is a key factor that affects personal loan elligibility. Minimum age: • 20 years Maximum age at loan maturity: • 55–58 years Younger applicants: Longer tenure increases higher eligibility Older applicants: Shorter tenure lowers loan amounts Does job type affect eligibility? Yes, job type influences risk assessment. Best job types (highest eligibility): • Government employees • MNC employees Moderate: • Private sector with stable company • Self-employed professionals (CA, doctor, lawyer) Higher risk: • Contractual workers • Cash-based jobs • Small business owners Job stability reduces risk for lenders. Eligibility criteria for govt employees. Government employees have some of the highest approval rates. Benefits: Lower interest rates Higher loan limits Faster approval Eligibility: Age: 20–58 years Salary: ₹20,000 minimum CIBIL score: 700+ 6 months job stability Aadhaar + PAN Salary account Govt employees fall under Category A or B in most banks. How to increase personal loan eligibility? Proven ways to increase eligibility: • Improve CIBIL score • Reduce existing EMIs • Choose longer tenure • Apply with salary account bank • Increase income (salary hike, bonus etc.) • Add a co-applicant • Maintain good banking behavior • Avoid enquiry spam • Keep credit card utilization below 30% Better profile increases chance of higher loan amount and lower interest. Eligibility for high-value loan (₹10–20 lakh). ICICI Bank offers loans up to ₹50 lakh. To qualify for ₹10–20 lakh, you typically need: - Monthly income above ₹30,000 - Strong credit score (700+) - Low income to debt ratio What is the loan eligibility based on income vs expenses? Eligibility depends on net disposable income, not just income. Lenders check: Net monthly income Existing EMIs Fixed obligations (Debt to income ratio)  What is the eligibility for salaried vs self-employed borrowers? What is the minimum salary needed for personal loan? What is the loan eligibility based on income vs expenses? What is the eligibility for freshers with first job? What is the eligibility for private company employees?",
+  "features": [],
+  "key_facts": [
+    "What is the eligibility for salaried vs self-employed borrowers?",
+    "What is the minimum salary needed for personal loan?",
+    "What is the loan eligibility based on income vs expenses?",
+    "What is the eligibility for freshers with first job?",
+    "What is the eligibility for private company employees?",
+    "What is the eligibility after loan settlement history?",
+    "What is loan eligibility using debt-to-income ratio?",
+    "What is the eligibility for personal loan without salary slip?",
+    "How does eligibility is impacted due to address mismatch?",
+    "What is the maximum loan I can get with ₹30,000 salary?"
+  ],
+  "content_hash": "c091f4fed76741a1",
+  "extraction_method": "sections,regex,body,links",
+  "confidence": 0.5,
+  "_written_at": "2026-03-21T07:38:15Z"
+}

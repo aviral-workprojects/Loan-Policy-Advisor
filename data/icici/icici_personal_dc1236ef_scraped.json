@@ -1,0 +1,54 @@
+{
+  "bank": "ICICI",
+  "loan_type": "personal",
+  "source_url": "https://www.icicibank.com/personal-banking/loans/personal-loan/personal-loan-for-medical-emergency",
+  "scraped_at": 1774078695.4746149,
+  "interest_rate": [
+    2.0,
+    10.85
+  ],
+  "processing_fee": null,
+  "processing_fee_pct": null,
+  "foreclosure_fee": null,
+  "late_fee": null,
+  "min_income": null,
+  "max_income": null,
+  "age_range": [
+    23,
+    65
+  ],
+  "employment_type": [
+    "salaried",
+    "self_employed"
+  ],
+  "min_cibil": null,
+  "min_experience": null,
+  "loan_amount": [
+    50.0,
+    100.0
+  ],
+  "tenure": [
+    72,
+    72
+  ],
+  "content": "Loans Personal Loan Apply Medical Loan for Emergency Personal Loan for Medical Emergencies Medical emergencies can be stressful. ICICI Bank provides quick and easy Personal Loan for medical emergencies with easy EMIs, ensuring you get the financial support you need without any collateral. Read Less Instant disbursement No collateral needed Know More APPLY SAVE Maximum Benefits of a Personal Loan for Medical Emergency Does a Personal Loan for medical expenses offer tax benefits? What are the key features of an ICICI Bank Personal Loan for Medical Emergency? Is collateral required to apply for a Personal Loan for medical emergencies? What are the factors to be considered while applying for a Personal Loan for a medical emergency?",
+  "features": [
+    "Maximum Benefits",
+    "Things you should know"
+  ],
+  "key_facts": [
+    "Maximum Benefits of a Personal Loan for Medical Emergency",
+    "Does a Personal Loan for medical expenses offer tax benefits?",
+    "What are the key features of an ICICI Bank Personal Loan for Medical Emergency?",
+    "Is collateral required to apply for a Personal Loan for medical emergencies?",
+    "What are the factors to be considered while applying for a Personal Loan for a medical emergency?",
+    "What is the maximum loan amount I can get for a Personal Loan for a medical emergency?",
+    "What is the repayment tenure for a Personal Loan for a medical emergency?",
+    "Apply online for an Instant Personal Medical Loan up to ₹50 Lakh. Quick approval, minimal paperwork, and flexible loan tenure cover emergency medical expenses.",
+    "Apply for Instant Personal Medical Loan online up to Rs. 50 Lakh and get quick approval. Get up to ₹50 lakhs quickly with minimal documentation and flexible tenure."
+  ],
+  "content_hash": "d8e9d6801edd83f6",
+  "extraction_method": "sections,regex,meta,body,links",
+  "confidence": 0.5,
+  "_written_at": "2026-03-21T07:38:15Z"
+}

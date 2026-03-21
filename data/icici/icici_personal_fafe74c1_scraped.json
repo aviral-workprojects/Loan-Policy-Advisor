@@ -1,0 +1,53 @@
+{
+  "bank": "ICICI",
+  "loan_type": "personal",
+  "source_url": "https://www.icicibank.com/personal-banking/loans/personal-loan/interest-rates",
+  "scraped_at": 1774078671.788913,
+  "interest_rate": [
+    9.99,
+    9.99
+  ],
+  "processing_fee": null,
+  "processing_fee_pct": null,
+  "foreclosure_fee": null,
+  "late_fee": null,
+  "min_income": null,
+  "max_income": null,
+  "age_range": [
+    25,
+    64
+  ],
+  "employment_type": [
+    "government"
+  ],
+  "min_cibil": null,
+  "min_experience": null,
+  "loan_amount": [
+    16.25,
+    16.25
+  ],
+  "tenure": [],
+  "content": "APPLY Loans Personal Loan Personal Loan Interest Rates Personal loan interest rates 2026 Interest rates on a Personal Loan refer to the annual cost of borrowing funds. Lenders set these rates based on various factors including creditworthiness and market conditions. Borrowers can use personal loan interest rate calculators to estimate their monthly repayments. Personal Loan interest rates play a crucial role in determining the overall cost of the loan; borrowers should compare the rates and choose the most favourable option for their financial needs. ICICI Bank offers Personal Loans with competitive interest rates starting at 9.99%* per annum. APPLY Latest Personal Loan Interest Rates The latest Personal Loan interest rate and applicable charges are provided in the table below: Particulars Details Interest Rate 9.99% to 16.50% p.a. Processing Charges Up to 2% + taxes Prepayment/Foreclosure 3% of the outstanding principal amount; Nil after 12 EMIs paid For a detailed breakdown of processing fees and other costs, check our detailed fees and charges page . Latest MCLR ICICI Bank MCLR – 1 Year Spread Effective ROI 8.35% 1.64% to 7.90% 9.99% to 16.25% MCLR stands for the Marginal Cost of Funds based Lending Rate. MCLR is subject to change, which may affect the final interest rates and hence the above figures are indicative in nature. T&Cs. Interest Rate Range for Personal Loans for period October 2025 to December 2025: Type of Credit Facility Maximum Minimum Mean Personal Loan 16.25% per annum 9.99% per annum 11.92% per annum Note: It excludes subsidies, government schemes and loans disbursed under the Emergency Credit Line Guarantee Scheme (ECLGS) at the mandated interest rate of 9.25%. Personal Loan Annual Percentage Rate (APR) Annual Percentage Rate (APR) is the annual cost of credit which includes interest rate and all other charges associated with the credit facility. Please click here to download the APR calculate and calculate these charges. CALCULATE EMI APPLY CHECK YOUR ELIGIBILITY Notes: The specific interest rate applicable to a customer is dependent on the segment, asset category and location. ICICI Bank reserves the right to revise the Rate of Interest and Processing Fee from time to time, at its sole discretion. GST and other government taxes, levies, etc., applicable as per the prevailing rates will be charged over and above the mentioned charges at the discretion of the Bank. The charges or fees given in the table are subject to change and the charges or fees recorded in your agreement will be binding over the details mentioned here. Fees and Service Charges of Personal Loan ICICI Bank offers a higher Personal Loan amount and lower EMIs at attractive interest rates. Please visit the ‘ Penal and Service Charges ’ tab on the ICICI Bank website to learn more about the fees and service charges applicable on an ICICI Bank Personal Loan. Important Information As per Rule 9B of the Prevention of Money Laundering (Maintenance of Records) Rules Particulars: Interest Rate | Details: 9.99% to 16.50% p.a. Particulars: Processing Charges | Details: Up to 2% + taxes Particulars: Prepayment/Foreclosure | Details: 3% of the outstanding principal amount; Nil after 12 EMIs paid ICICI Bank MCLR – 1 Year: 8.35% | Spread: 1.64% to 7.90% | Effective ROI: 9.99% to 16.25% Type of Credit Facility: Personal Loan | Maximum: 16.25% per annum | Minimum: 9.99% per annum | Mean: 11.92% per annum Personal loan interest rates 2026 Interest rates on a Personal Loan refer to the annual cost of borrowing funds. Lenders set these rates based on various factors including creditworthiness and market conditions. Borrowers can use personal loan interest rate calculators to estimate their monthly repayments. Personal Loan interest rates play a crucial role in determining the overall cost of the loan Latest Personal Loan Interest Rates The latest Personal Loan interest rate and applicable charges are provided in the table below: Particulars Details Interest ",
+  "features": [
+    "The specific interest rate applicable to a customer is dependent on the segment, asset category and location.",
+    "ICICI Bank reserves the right to revise the Rate of Interest and Processing Fee from time to time, at its sole discretion.",
+    "GST and other government taxes, levies, etc., applicable as per the prevailing rates will be charged over and above the mentioned charges at the discretion of the Bank.",
+    "The charges or fees given in the table are subject to change and the charges or fees recorded in your agreement will be binding over the details mentioned here."
+  ],
+  "key_facts": [
+    "Personal loan interest rates 2026 Interest rates on a Personal Loan refer to the annual cost of borrowing funds. Lenders set these rates based on various factors including creditworthiness and market conditions. Borrowers can use personal loan interest rate calculators to estimate their monthly repayments. Personal Loan interest rates play a crucial role in determining the overall cost of the loan",
+    "Latest Personal Loan Interest Rates The latest Personal Loan interest rate and applicable charges are provided in the table below: Particulars Details Interest Rate 9.99% to 16.50% p.a. Processing Charges Up to 2% + taxes Prepayment/Foreclosure 3% of the outstanding principal amount; Nil after 12 EMIs paid For a detailed breakdown of processing fees and other costs, check our detailed fees and cha",
+    "Personal Loan Annual Percentage Rate (APR) Annual Percentage Rate (APR) is the annual cost of credit which includes interest rate and all other charges associated with the credit facility. Please click here to download the APR calculate and calculate these charges. CALCULATE EMI APPLY CHECK YOUR ELIGIBILITY Notes: The specific interest rate applicable to a customer is dependent on the segment, ass",
+    "Fees and Service Charges of Personal Loan ICICI Bank offers a higher Personal Loan amount and lower EMIs at attractive interest rates. Please visit the ‘ Penal and Service Charges ’ tab on the ICICI Bank website to learn more about the fees and service charges applicable on an ICICI Bank Personal Loan.",
+    "How can I get the lowest interest rate on a Personal Loan?",
+    "How are the Personal Loan interest rates calculated?",
+    "Can I avail a Personal Loan at a lower interest rate despite having a low CIBIL score?",
+    "Does ICICI Bank provide a special Personal Loan interest rate for Salary Account holders?",
+    "How does the Personal Loan interest rate affect my loan repayment?",
+    "Is the Personal Loan interest rate fixed or floating?"
+  ],
+  "content_hash": "ac70cd4a87b58815",
+  "extraction_method": "sections,tables,meta,body,links",
+  "confidence": 0.5,
+  "_written_at": "2026-03-21T07:37:51Z"
+}

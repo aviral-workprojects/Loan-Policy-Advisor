@@ -1,0 +1,128 @@
+{
+  "source": "36102.pdf",
+  "bank": "RBI",
+  "is_scanned": false,
+  "method": "text_layer",
+  "chunks": [
+    {
+      "text": "Guidelines on Fair Practices Code for Lenders DBOD. Leg. No.BC. 104 /09.07.007/2002-03 May 5, 2003 All Scheduled Commercial Banks / All India Financial Institutions (Excluding RRBs and LABs) Dear Sir, Guidelines on Fair Practices Code for Lenders On the basis of the recommendations of the Working Group on Lenders’ Liability Laws constituted by the Government of India, we have examined, in consultation with Government, select banks and financial institutions, the feasibility of introducing the Fair Practices Code for Lenders. The guidelines have since been finalised and banks/ all India Financial Institutions are advised to adopt the following broad guidelines and frame the Fair Practices Code duly approved by their Board of Directors. 2. Guidelines (i) Applications for loans and their processing (a) Loan application forms in respect of priority sector advances up to Rs.2.00 lakhs should be comprehensive. It should include information about the fees/charges, if any, payable for processing, the amount of such fees refundable in the case of non acceptance of application, pre-payment options and any other matter which affects the interest of the borrower, so that a meaningful comparison with that of other banks can be made and informed decision can be taken by the borrower. (b) Banks and financial institutions should devise a system of giving acknowledgement for receipt of all loan applications. Time frame within which loan applications up to Rs.2 lakhs will be disposed of should also be indicated in acknowledgement of such applications. (c) Banks / financial institutions should verify the loan applications within a reasonable period of time. If additional details / documents are required, they should intimate the borrowers immediately.",
+      "source": "36102.pdf",
+      "bank": "RBI",
+      "doc_type": "regulatory",
+      "chunk_id": 0,
+      "field_hint": "fees",
+      "section_title": "",
+      "element_type": "text",
+      "page_number": 1,
+      "similarity_score": 0.0
+    },
+    {
+      "text": "For this entry: 2. Guidelines is (i) Applications for loans and their processing. For this entry: (a) Loan application forms in respect of priority sector advances up to Rs.2.00 lakhs. For this entry: should be comprehensive. It should include information about the fees/charges, if any,. For this entry: payable for processing, the amount of such fees refundable in the case of non acceptance. For this entry: of application, pre-payment options and any other matter which affects the interest of the. For this entry: borrower, so that a meaningful comparison with that of other banks can be made and. For this entry: 2. Guidelines is informed decision can be taken by the borrower.. For this entry: (b) Banks and financial institutions should devise a system of giving acknowledgement. For this entry: for receipt of all loan applications. Time frame within which loan applications up to Rs.2. For this entry: 2. Guidelines is lakhs will be disposed of should also be, indicated, in acknowledgement of such. For this entry: 2. Guidelines is applications.. For this entry: (c) Banks / financial institutions should verify the loan applications within a reasonable. For this entry: period of time. If additional details / documents are required, they should intimate the. For this entry: 2. Guidelines is borrowers immediately..",
+      "source": "36102.pdf",
+      "bank": "RBI",
+      "doc_type": "table",
+      "chunk_id": 1,
+      "field_hint": "fees",
+      "section_title": "",
+      "element_type": "table",
+      "page_number": 1,
+      "similarity_score": 0.0
+    },
+    {
+      "text": "2 (d) In the case of small borrowers seeking loans up to Rs. 2 lakhs the lenders should convey in writing, the main reason/reasons which, in the opinion of the bank after due consideration, have led to rejection of the loan applications within stipulated time. (ii) Loan appraisal and terms/conditions a) Lenders should ensure that there is proper assessment of credit application by borrowers. They should not use margin and security stipulation as a substitute for due diligence on credit worthiness of the borrower. b) The lender should convey to the borrower the credit limit along with the terms and conditions thereof and keep the borrower's acceptance of these terms and conditions given with his full knowledge on record. c) Terms and conditions and other caveats governing credit facilities given by banks/ financial institutions arrived at after negotiation by lending institution and the borrower should be reduced in writing and duly certified by the authorised official. A copy of the loan agreement along with a copy each of all enclosures quoted in the loan agreement should be furnished to the borrower. d) As far as possible, the loan agreement should clearly stipulate credit facilities that are solely at the discretion of lenders. These may include approval or disallowance of facilities, such as, drawings beyond the sanctioned limits, honouring cheques issued for the purpose other than specifically agreed to in the credit sanction, and disallowing drawing on a borrowal account on its classification as a non-performing asset or on account of non-compliance with the terms of sanction. It may also be specifically stated that the lender does not have an obligation to meet further requirements of the borrowers on account of growth in business etc. without proper review of credit limits. e) In the case of lending under consortium arrangement, the participating lenders should evolve procedures to complete appraisal of proposals in the time bound manner to the extent feasible, and communicate their decisions on financing or otherwise within a reasonable time. (iii) Disbursement of loans including changes in terms and conditions Lenders should ensure timely disbursement of loans sanctioned in conformity with the terms and conditions governing such sanction. Lenders should give notice of any change in the",
+      "source": "36102.pdf",
+      "bank": "RBI",
+      "doc_type": "regulatory",
+      "chunk_id": 2,
+      "field_hint": "loan_amount",
+      "section_title": "",
+      "element_type": "text",
+      "page_number": 2,
+      "similarity_score": 0.0
+    },
+    {
+      "text": "a) Lenders should ensure: that there is proper assessment of credit application by. e): In the case of lending under consortium arrangement, the participating lenders should.",
+      "source": "36102.pdf",
+      "bank": "RBI",
+      "doc_type": "table",
+      "chunk_id": 3,
+      "field_hint": "",
+      "section_title": "",
+      "element_type": "table",
+      "page_number": 2,
+      "similarity_score": 0.0
+    },
+    {
+      "text": "3 terms and conditions including interest rates, service charges etc. Lenders should also ensure that changes in interest rates and charges are effected only prospectively.",
+      "source": "36102.pdf",
+      "bank": "RBI",
+      "doc_type": "regulatory",
+      "chunk_id": 4,
+      "field_hint": "work_experience_months",
+      "section_title": "",
+      "element_type": "text",
+      "page_number": 3,
+      "similarity_score": 0.0
+    },
+    {
+      "text": "For this entry: 3 is terms and conditions including interest rates, service charges etc. Lenders should also ensure. For this entry: 3 is that changes in interest rates and charges are effected only prospectively..",
+      "source": "36102.pdf",
+      "bank": "RBI",
+      "doc_type": "table",
+      "chunk_id": 5,
+      "field_hint": "work_experience_months",
+      "section_title": "",
+      "element_type": "table",
+      "page_number": 3,
+      "similarity_score": 0.0
+    },
+    {
+      "text": "4 (iv) Post disbursement supervision a) Post disbursement supervision by lenders, particularly in respect of loans upto Rs.2 lakhs, should be constructive with a view to taking care of any\" lender-related\" genuine difficulty that the borrower may face. b) Before taking a decision to recall / accelerate payment or performance under the agreement or seeking additional securities, lenders should give notice to borrowers, as specified in the loan agreement or a reasonable period, if no such condition exits in the loan agreement. c) Lenders should release all securities on receiving payment of loan or realisation of loan subject to any legitimate right or lien for any other claim lenders may have against borrowers. If such right of set off is to be exercised, borrowers shall be given notice about the same with full particulars about the remaining claims and the documents under which lenders are entitled to retain the securities till the relevant claim is settled/paid. (v) General a) Lenders should restrain from interference in the affairs of the borrowers except for what is provided in the terms and conditions of the loan sanction documents (unless new information, not earlier disclosed by the borrower, has come to the notice of the lender). b) Lenders must not discriminate on grounds of sex, caste and religion in the matter of lending. However, this does not preclude lenders from participating in credit-linked schemes framed for weaker sections of the society. c) In the matter of recovery of loans, the lenders should not resort to undue harassment viz. persistently bothering the borrowers at odd hours, use of muscle power for recovery of loans, etc. d) In case of receipt of request for transfer of borrowal account, either from the borrower or from a bank/financial institution, which proposes to take- over the account, the consent or otherwise i.e, objection of the lender, if any, should be conveyed within 21 days from the date of receipt of request. 3. Fair Practices Code based on the guidelines outlined in the paragraph 2 above should be put in place in respect of all lending prospectively, but not later than 01 August 2003. Banks",
+      "source": "36102.pdf",
+      "bank": "RBI",
+      "doc_type": "regulatory",
+      "chunk_id": 6,
+      "field_hint": "loan_amount",
+      "section_title": "",
+      "element_type": "text",
+      "page_number": 4,
+      "similarity_score": 0.0
+    },
+    {
+      "text": "For this entry: a) Post disbursement supervision by lenders, particularly in respect of loans upto Rs.2. For this entry: lakhs, should be constructive with a view to taking care of any\" lender-related\". For this entry: genuine difficulty that the borrower may face.. For this entry: b) Before taking a decision to recall / accelerate payment or performance under the. For this entry: agreement or seeking additional securities, lenders should give notice to borrowers, as. For this entry: specified in the loan agreement or a reasonable period, if no such condition exits in. For this entry: (iv) Post disbursement supervision is the loan agreement.. For this entry: c) Lenders should release all securities on receiving payment of loan or realisation of. For this entry: loan subject to any legitimate right or lien for any other claim lenders may have. For this entry: against borrowers. If such right of set off is to be exercised, borrowers shall be given. For this entry: (iv) Post disbursement supervision is notice about, the same with full particulars about, the remaining claims and, the. For this entry: documents under which lenders are entitled to retain the securities till the relevant. For this entry: (iv) Post disbursement supervision is claim is settled/paid..",
+      "source": "36102.pdf",
+      "bank": "RBI",
+      "doc_type": "table",
+      "chunk_id": 7,
+      "field_hint": "loan_amount",
+      "section_title": "",
+      "element_type": "table",
+      "page_number": 4,
+      "similarity_score": 0.0
+    },
+    {
+      "text": "5 and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing the scope of the guidelines but in no way sacrificing the spirit underlying the above guidelines. For this purpose, the Boards of banks and financial institutions should lay down a clear policy. 4. The Board of Directors should also lay down the appropriate grievance redressal mechanism within the organization to resolve disputes arising in this regard. Such a mechanism should ensure that all disputes arising out of the decisions of lending institutions' functionaries are heard and disposed of at least at the next higher level. The Board of Directors should also provide for periodical review of the compliance of the Fair Practices Code and the functioning of the grievances redressal mechanism at various levels of controlling offices. A consolidated report of such reviews may be submitted to the Board at regular intervals, as may be prescribed by it. 5. The adoption of the Code, printing of necessary loan application forms and circulation thereof among the branches and controlling offices should also be completed latest by end of June 2003. The Fair Practices Code, which may be adopted by banks and financial institutions, should also be put on their website and given wide publicity. A copy may also be forwarded to the Reserve Bank of India. 6. Please acknowledge receipt. Yours faithfully, (M.R. Srinivasan) Chief General Manager-in-Charge",
+      "source": "36102.pdf",
+      "bank": "RBI",
+      "doc_type": "regulatory",
+      "chunk_id": 8,
+      "field_hint": "",
+      "section_title": "",
+      "element_type": "text",
+      "page_number": 5,
+      "similarity_score": 0.0
+    },
+    {
+      "text": "For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is the scope of the guidelines but in no way sacrificing the spirit underlying the above. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is guidelines. For this purpose, the Boards of banks and financial institutions should lay down a. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is clear policy.. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is 4. The Board of Directors should also lay down the appropriate grievance redressal. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is mechanism within the organization to resolve disputes arising in this regard. Such a. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is mechanism should ensure that all disputes arising out of the decisions of lending institutions'. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is functionaries are heard and disposed of at least at the next higher level. The Board of. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is Directors should also provide for periodical review of the compliance of the Fair Practices. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is Code and the functioning of the grievances redressal mechanism at various levels of. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is controlling offices. A consolidated report of such reviews may be submitted to the Board at. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is regular intervals, as may be prescribed by it.. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is 5. The adoption of the Code, printing of necessary loan application forms and circulation. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is thereof among the branches and controlling offices should also be completed latest by end of. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is June 2003. The Fair Practices Code, which may be adopted by banks and financial. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is institutions, should also be put on their website and given wide publicity. A copy may also. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is be forwarded to the Reserve Bank of India.. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is 6. Please acknowledge receipt.. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is Yours faithfully,. For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is (M.R. Srinivasan). For this entry: and financial institutions will have the freedom of drafting the Fair Practices Code, enhancing is Chief General Manager-in-Charge.",
+      "source": "36102.pdf",
+      "bank": "RBI",
+      "doc_type": "table",
+      "chunk_id": 9,
+      "field_hint": "",
+      "section_title": "",
+      "element_type": "table",
+      "page_number": 5,
+      "similarity_score": 0.0
+    }
+  ]
+}

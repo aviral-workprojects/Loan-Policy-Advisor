@@ -22,7 +22,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-_NVIDIA_EMBED_URL   = "https://ai.api.nvidia.com/v1/embeddings"
+_NVIDIA_EMBED_URL   = "https://integrate.api.nvidia.com/v1/embeddings"   # fixed: was ai.api.nvidia.com which 404s
 _NVIDIA_EMBED_MODEL = "nvidia/llama-3_2-nemoretriever-300m-embed-v2"
 _NVIDIA_BATCH_SIZE  = 16
 _MAX_RETRIES        = 3
@@ -103,15 +103,28 @@ class NvidiaEmbedder:
                     _NVIDIA_EMBED_URL, json=payload,
                     headers=self._headers, timeout=30,
                 )
+
+                # 404 means wrong endpoint — retrying is pointless, fail immediately
+                if resp.status_code == 404:
+                    raise RuntimeError(
+                        f"NVIDIA Embeddings 404: endpoint not found. "
+                        f"Check NVIDIA_EMBED_MODEL and API key permissions. "
+                        f"URL: {_NVIDIA_EMBED_URL}"
+                    )
+
                 if resp.status_code in _RETRYABLE_STATUSES:
                     wait = _RETRY_DELAY * (2 ** (attempt - 1))
-                    logger.warning("[Embed] HTTP %d — retry %.1fs", resp.status_code, wait)
+                    logger.warning("[Embed] HTTP %d — retry in %.1fs", resp.status_code, wait)
                     last_err = Exception(f"HTTP {resp.status_code}")
                     if attempt < _MAX_RETRIES:
                         time.sleep(wait)
                     continue
+
                 resp.raise_for_status()
                 return resp.json()
+
+            except RuntimeError:
+                raise   # re-raise our own errors immediately (404, etc.)
             except Exception as e:
                 last_err = e
                 wait = _RETRY_DELAY * (2 ** (attempt - 1))
@@ -163,25 +176,50 @@ def get_embedder(
     model:    str | None = None,
 ) -> NvidiaEmbedder | LocalEmbedder:
     """
-    Factory function. Returns the best available embedder.
+    Factory with automatic fallback.
 
     Priority:
-      1. NVIDIA NemoRetriever (if backend="nvidia_api" and api_key set)
-      2. Local sentence-transformers (always available)
+      1. NVIDIA NemoRetriever (if NVIDIA_EMBED_BACKEND=nvidia_api and key is set)
+         → If NVIDIA API fails a probe request, falls back to local automatically.
+      2. Local sentence-transformers (always works, no API key needed)
+
+    The fallback is silent in production — a WARNING is logged but the pipeline
+    continues. This prevents a wrong API key or endpoint from taking down the
+    entire bootstrap process.
     """
     import os
     backend = backend or os.getenv("NVIDIA_EMBED_BACKEND", "local")
     api_key = api_key or os.getenv("NVIDIA_API_KEY", "")
 
-    if backend == "nvidia_api" and api_key:
-        embed_model = model or os.getenv(
-            "NVIDIA_EMBED_MODEL", _NVIDIA_EMBED_MODEL
-        )
-        logger.info("[Embed] Backend: NVIDIA NemoRetriever (%s)", embed_model)
-        return NvidiaEmbedder(api_key=api_key, model=embed_model)
-
     local_model = model or os.getenv(
         "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
     )
-    logger.info("[Embed] Backend: local sentence-transformers (%s)", local_model)
+
+    if backend == "nvidia_api" and api_key:
+        embed_model = model or os.getenv("NVIDIA_EMBED_MODEL", _NVIDIA_EMBED_MODEL)
+        logger.info("[Embed] Attempting NVIDIA NemoRetriever (%s)…", embed_model)
+
+        # Probe the API with a single short string before committing to it.
+        # If the probe fails, fall back to local immediately rather than
+        # discovering the failure mid-way through 823 chunks.
+        try:
+            probe = NvidiaEmbedder(api_key=api_key, model=embed_model)
+            probe._post_with_retry({
+                "model":           embed_model,
+                "input":           ["probe"],
+                "input_type":      "passage",
+                "encoding_format": "float",
+                "truncate":        "END",
+            })
+            logger.info("[Embed] ✅ NVIDIA NemoRetriever probe OK — using cloud embeddings")
+            return probe
+        except Exception as e:
+            logger.warning(
+                "[Embed] ⚠️  NVIDIA probe failed (%s) — falling back to local sentence-transformers.\n"
+                "       To silence this: set NVIDIA_EMBED_BACKEND=local in .env",
+                e,
+            )
+            # Fall through to local
+
+    logger.info("[Embed] Using local sentence-transformers: %s", local_model)
     return LocalEmbedder(model_name=local_model)
