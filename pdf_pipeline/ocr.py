@@ -69,8 +69,25 @@ def _get_paddle():
 _tesseract_available = False
 try:
     import pytesseract as _pytesseract
-    _pytesseract.get_tesseract_version()
+    import shutil
+    import os
+
+    # Windows venv PATH isolation: the venv's PATH often doesn't include
+    # the Tesseract install dir even when the system terminal can see it.
+    # Strategy: shutil.which() first (respects PATH), then common install
+    # locations, then env override — whichever works first wins.
+    _tess_path = (
+        os.getenv("TESSERACT_PATH")                            # .env override
+        or shutil.which("tesseract")                           # already on PATH
+        or r"C:\Program Files\Tesseract-OCR\tesseract.exe"    # default Windows install
+        or r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"
+    )
+    if _tess_path:
+        _pytesseract.pytesseract.tesseract_cmd = _tess_path
+
+    _pytesseract.get_tesseract_version()   # probe — raises if not found
     _tesseract_available = True
+    logger.info("[OCR] Tesseract available: %s", _tess_path)
 except Exception:
     pass
 

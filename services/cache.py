@@ -32,7 +32,10 @@ class SemanticCache:
         if self._embedder is None:
             from sentence_transformers import SentenceTransformer
             from config import EMBEDDING_MODEL
-            self._embedder = SentenceTransformer(EMBEDDING_MODEL)
+            # Force CPU — avoids CUDA sm_120 incompatibility with current PyTorch.
+            # The cache embedder is used for semantic similarity on query strings,
+            # not bulk indexing, so CPU is fast enough (< 5ms per query).
+            self._embedder = SentenceTransformer(EMBEDDING_MODEL, device="cpu")
         return self._embedder
 
     def _embed(self, text: str) -> np.ndarray:

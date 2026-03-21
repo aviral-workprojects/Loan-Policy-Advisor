@@ -250,7 +250,9 @@ def compute_confidence(
       - Multiple banks failed                       → reduce by 0.04 per failed bank beyond 1
     """
     if not bank_results:
-        return 0.3
+        # No bank results — return minimal confidence with empty breakdown.
+        # Must return a tuple (float, dict) — the caller unpacks both values.
+        return 0.3, {"final": 0.3, "note": "no bank results"}
 
     avg_rule_score = sum(r.rule_score for r in bank_results) / len(bank_results)
     data_comp      = reasoning.data_completeness

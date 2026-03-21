@@ -242,16 +242,44 @@ class RetrievalService:
                     self._bm25 = pickle.load(f)
             logger.info("[Retrieval] Loaded index: %d chunks", len(self._chunks))
             return True
+        except ModuleNotFoundError as e:
+            # faiss-cpu not installed — give a clear actionable message
+            logger.error(
+                "[Retrieval] faiss-cpu not installed. "
+                "Fix: pip install faiss-cpu   then re-run bootstrap."
+            )
+            return False
         except Exception as e:
             logger.error("[Retrieval] Failed to load index: %s", e)
             return False
 
     def ensure_ready(self) -> None:
+        """
+        Load the FAISS index if not already loaded.
+        Logs a clear warning instead of crashing — the API can still start
+        and serve health checks / rule-engine-only queries without retrieval.
+        Retrieval calls will return empty results and trigger the web search
+        fallback rather than bringing down the whole process.
+        """
         if self._index is None:
-            if not self.load_index():
-                raise RuntimeError(
-                    "No FAISS index found. Run bootstrap to build the index."
-                )
+            loaded = self.load_index()
+            if not loaded:
+                # Check whether it's a missing install vs missing index file
+                try:
+                    import faiss  # noqa: F401
+                    logger.warning(
+                        "[Retrieval] ⚠️  No FAISS index found at %s. "
+                        "RAG retrieval will return empty results until you run: "
+                        "python bootstrap.py",
+                        self._index_dir,
+                    )
+                except ModuleNotFoundError:
+                    logger.warning(
+                        "[Retrieval] ⚠️  faiss-cpu not installed. "
+                        "RAG retrieval disabled. Fix: pip install faiss-cpu"
+                    )
+                # Do NOT raise — let the API start so health checks and
+                # rule-engine-only queries still work.
 
     def retrieve(
         self,
@@ -263,6 +291,8 @@ class RetrievalService:
     ) -> list[DocChunk]:
         """
         Hybrid retrieval: FAISS + BM25 + RRF + field_hint boost + optional rerank.
+        Returns empty list if index is not loaded — API stays up, web-search
+        fallback fires in pipeline.py so queries still get answered.
 
         Args:
             query:     natural language query
@@ -272,6 +302,9 @@ class RetrievalService:
             fetch_k:   candidates per retrieval method before fusion
         """
         self.ensure_ready()
+        if self._index is None:
+            logger.debug("[Retrieval] Index not available — returning empty results")
+            return []
         candidates = self._hybrid_search(query, fetch_k, banks, doc_types)
 
         import os
