@@ -9,7 +9,9 @@ deduplicates, and prioritizes by source authority:
 """
 
 from __future__ import annotations
-from services.retrieval import DocChunk
+# services.retrieval was replaced by pdf_pipeline.retriever in the v4 architecture.
+# DocChunk is now defined there — all other code in this file is unchanged.
+from pdf_pipeline.retriever import DocChunk
 
 # Priority order — lower number = higher priority
 SOURCE_PRIORITY = {

@@ -202,6 +202,152 @@ def _detect_bank(pdf_path: Path) -> str:
 
 
 # ---------------------------------------------------------------------------
+# .txt file loader  (eligibility.txt, comparison.txt, guidelines.txt, etc.)
+# ---------------------------------------------------------------------------
+
+# Maps data subfolder name → (canonical bank, doc_type)
+_FOLDER_BANK_MAP = {
+    "axis":        ("Axis",        "eligibility"),
+    "hdfc_pdfs":   ("HDFC",        "eligibility"),
+    "icici":       ("ICICI",       "eligibility"),
+    "sbi_pdfs":    ("SBI",         "eligibility"),
+    "bankbazaar":  ("BankBazaar",  "comparison"),
+    "paisabazaar": ("Paisabazaar", "comparison"),
+    "rbi":         ("RBI",         "regulatory"),
+    "misc":        ("Unknown",     "pdf"),
+}
+
+def load_text_files(data_dir: Path) -> list:
+    """
+    Load all .txt files from data/ subfolders and chunk them.
+
+    These are the curated knowledge files (eligibility.txt, comparison.txt,
+    guidelines.txt, sbi_xpress_credit.txt, etc.) that were in the repo before
+    any scraping happened. They contain high-quality hand-curated information
+    that must be indexed alongside PDFs.
+
+    Returns list of DocChunk objects.
+    """
+    from pdf_pipeline.retriever import DocChunk
+    from pdf_pipeline.chunker   import CHUNK_WORDS, OVERLAP_WORDS, _split_text, detect_field_hint
+
+    chunks: list[DocChunk] = []
+    chunk_id = 0
+    txt_files_found = 0
+
+    for folder_path in sorted(data_dir.iterdir()):
+        if not folder_path.is_dir():
+            continue
+
+        folder_name = folder_path.name.lower()
+        bank, doc_type = _FOLDER_BANK_MAP.get(folder_name, ("Unknown", "pdf"))
+
+        for txt_path in sorted(folder_path.glob("*.txt")):
+            try:
+                text = txt_path.read_text(encoding="utf-8", errors="ignore").strip()
+                if not text:
+                    continue
+
+                txt_files_found += 1
+                text_chunks = _split_text(text, CHUNK_WORDS, OVERLAP_WORDS)
+
+                for tc in text_chunks:
+                    if len(tc.split()) < 15:
+                        continue
+                    chunks.append(DocChunk(
+                        text=tc,
+                        source=txt_path.name,
+                        bank=bank,
+                        doc_type=doc_type,
+                        chunk_id=chunk_id,
+                        field_hint=detect_field_hint(tc),
+                    ))
+                    chunk_id += 1
+
+                logger.info("📝  %-40s  %d chunks  bank=%s",
+                            txt_path.name,
+                            len([c for c in chunks if c.source == txt_path.name]),
+                            bank)
+            except Exception as e:
+                logger.warning("[TXT] Failed to read %s: %s", txt_path.name, e)
+
+    logger.info("[TXT] Loaded %d .txt files → %d chunks", txt_files_found, len(chunks))
+    return chunks
+
+
+# ---------------------------------------------------------------------------
+# Scraped JSON loader  (*_scraped.json written by run_scraper.py)
+# ---------------------------------------------------------------------------
+
+def load_scraped_json(data_dir: Path) -> list:
+    """
+    Load all *_scraped.json files written by run_scraper.py.
+
+    Each scraped JSON contains a LoanRecord with structured financial data
+    and a pre-built RAG text string (to_rag_text()). We index the RAG text
+    directly — it is already chunked and natural-language formatted.
+
+    Returns list of DocChunk objects.
+    """
+    from pdf_pipeline.retriever import DocChunk
+    from pdf_pipeline.chunker   import detect_field_hint
+
+    chunks: list[DocChunk] = []
+    chunk_id = 0
+    json_files_found = 0
+
+    for folder_path in sorted(data_dir.iterdir()):
+        if not folder_path.is_dir():
+            continue
+
+        folder_name = folder_path.name.lower()
+        _, doc_type = _FOLDER_BANK_MAP.get(folder_name, ("Unknown", "pdf"))
+
+        for json_path in sorted(folder_path.glob("*_scraped.json")):
+            try:
+                data = json.loads(json_path.read_text(encoding="utf-8"))
+                bank    = data.get("bank", "Unknown") or "Unknown"
+                content = data.get("content", "").strip()
+
+                if not content or len(content) < 50:
+                    continue
+
+                json_files_found += 1
+
+                # Use the pre-built RAG text if available (richer than raw content)
+                # Fall back to content field
+                rag_text = content
+
+                # Also append key_facts and features if present
+                extras = []
+                for feat in data.get("features", [])[:5]:
+                    if feat and len(feat) > 20:
+                        extras.append(feat)
+                for fact in data.get("key_facts", [])[:5]:
+                    if fact and len(fact) > 20:
+                        extras.append(fact)
+                if extras:
+                    rag_text = rag_text + " " + " ".join(extras)
+
+                chunks.append(DocChunk(
+                    text=rag_text[:2000],
+                    source=json_path.name,
+                    bank=bank,
+                    doc_type="comparison" if bank in ("Paisabazaar", "BankBazaar") else "eligibility",
+                    chunk_id=chunk_id,
+                    field_hint=detect_field_hint(rag_text),
+                ))
+                chunk_id += 1
+
+            except Exception as e:
+                logger.warning("[ScrapedJSON] Failed to read %s: %s", json_path.name, e)
+
+    logger.info("[ScrapedJSON] Loaded %d *_scraped.json files → %d chunks",
+                json_files_found, len(chunks))
+    return chunks
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -256,16 +402,31 @@ def main():
 
     # Batch mode
     print("[1] Extracting PDFs…")
-    chunks = process_pdfs(data_dir, processed_dir, force=args.force)
+    pdf_chunks = process_pdfs(data_dir, processed_dir, force=args.force)
 
-    if not chunks:
-        print("\n⚠️  No chunks extracted. Add PDF files to the data/ directory.")
+    print("\n[1b] Loading .txt files…")
+    txt_chunks = load_text_files(data_dir)
+
+    print("\n[1c] Loading scraped JSON files (*_scraped.json)…")
+    scraped_chunks = load_scraped_json(data_dir)
+
+    # Merge all chunk sources and re-assign sequential IDs
+    all_chunks = pdf_chunks + txt_chunks + scraped_chunks
+    for i, c in enumerate(all_chunks):
+        c.chunk_id = i
+
+    if not all_chunks:
+        print("\n⚠️  No content found. Add PDF or .txt files to the data/ directory.")
         return
 
-    print(f"\n    Total chunks: {len(chunks)}")
+    print(f"\n    PDF chunks:     {len(pdf_chunks)}")
+    print(f"    TXT chunks:     {len(txt_chunks)}")
+    print(f"    Scraped chunks: {len(scraped_chunks)}")
+    print(f"    ─────────────────────────")
+    print(f"    Total chunks:   {len(all_chunks)}")
 
     print("\n[2] Building FAISS + BM25 index…")
-    build_index(chunks, FAISS_INDEX_DIR)
+    build_index(all_chunks, FAISS_INDEX_DIR)
 
     print("\n✅  Bootstrap complete!")
     print("\nStart the API:")
