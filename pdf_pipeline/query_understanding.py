@@ -131,7 +131,9 @@ _INTENT_PATTERNS = {
         re.I,
     ),
     "document": re.compile(
-        r"\bdocument|\bkyc\b|\bpapers?\b|\bsubmit\b|\brequired.*doc|\bdoc.*required",
+        r"\bdocument|\bkyc\b|\bpapers?\b|\bsubmit\b|\brequired.*doc|\bdoc.*required|"
+        r"\bpan(?:\s*card)?\b|\baadhaar\b|\bproof\b|\bsalary\s*slip\b|\bitr\b|"
+        r"\bbank\s*statement\b|\bpassport\b|\bform\s*16\b",
         re.I,
     ),
 }
@@ -321,21 +323,22 @@ def _extract_entities(query: str) -> dict[str, Any]:
         except ValueError:
             pass
 
-    # Employment type — order matters: check negative/unemployed FIRST to avoid
-    # "\bjob\b" matching "no job" and falsely returning "salaried".
+    # Employment type — check self-employed/freelance FIRST so that phrases like
+    # "no job but income from freelancing" correctly resolve to self_employed.
+    # Then check unemployed/no-income, then specific subtypes, then generic salaried.
     ql = query.lower()
-    if re.search(r"\bno\s+job\b|\bunemployed\b|\bjobless\b|\bno\s+(?:fixed\s+)?income\b", ql):
-        entities["employment_type"] = "unemployed"
-    elif re.search(r"\bself.?emp|\bfreelance[rd]?\b|\bfreelancing\b|\bgig\s*worker\b|"
-                   r"\bconsultant\b|\bown\s+business\b|\bproprietor\b|\bbusiness\s+owner\b", ql):
+    if re.search(r"\bself.?emp|\bfreelance[rd]?\b|\bfreelancing\b|\bgig\s*worker\b|"
+                 r"\bconsultant\b|\bown\s+business\b|\bproprietor\b|\bbusiness\s+owner\b", ql):
         entities["employment_type"] = "self_employed"
+    elif re.search(r"\bno\s+job\b|\bunemployed\b|\bjobless\b|\bno\s+(?:fixed\s+)?income\b", ql):
+        entities["employment_type"] = "unemployed"
     elif re.search(r"\bgovernment\b|\bpsu\b|\bpublic\s+sector\b|\bdefence\b|\bdefense\b", ql):
         entities["employment_type"] = "government"
     elif re.search(r"\bprofessional\b|\bdoctor\b|\bca\b|\bchartered\b|\blawyer\b|\barchitect\b", ql):
         entities["employment_type"] = "professional"
     elif re.search(r"\bsalaried\b|\bemployed\b|\bservice\b|\bworking\b", ql):
         entities["employment_type"] = "salaried"
-    # Note: bare "\bjob\b" intentionally removed — too ambiguous with "no job"
+    # Note: bare "\bjob\b" intentionally omitted — too ambiguous with "no job"
 
     # DTI ratio
     m = re.search(r"\bdti\s*(?:of|is|=)?\s*(\d+)%?", query, re.I)
@@ -385,6 +388,12 @@ def _reformulate_query(
 
     if intent == "eligibility":
         parts.append("eligibility criteria requirements")
+
+    # Expand intent-specific retrieval vocabulary
+    if re.search(r"\burgent\b|\bfast\b|\bquick\b|\binstant\b|\bjaldi\b", original, re.I):
+        parts.append("instant disbursal pre-approved fast approval")
+    if intent == "comparison" or re.search(r"\bbest\b|\bsafest\b|\bcheapest\b|\blowest\b", original, re.I):
+        parts.append("compare difference vs lowest interest rate")
 
     if loan_type and loan_type != "personal":
         parts.append(f"{loan_type} loan")

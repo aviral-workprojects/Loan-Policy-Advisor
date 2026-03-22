@@ -248,7 +248,7 @@ class RuleEngine:
             summary = f"✅ Eligible — all {pass_count} rules passed."
         elif critical_missing:
             fields = ", ".join(e.field for e in critical_missing)
-            summary = f"⚠️ Cannot evaluate — missing critical fields: {fields}"
+            summary = f"⚠️ Need more info — please provide: {fields}"
         else:
             top_fails = [e.reason for e in evaluations if e.status == "fail"][:2]
             summary = f"❌ Not eligible — {fail_count} rule(s) failed: {'; '.join(top_fails)}"

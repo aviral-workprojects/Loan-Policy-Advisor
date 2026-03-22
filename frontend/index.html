@@ -996,6 +996,20 @@ const API_BASE = 'http://localhost:8000';
 let isLoading  = false;
 let msgIndex   = 0;
 
+// ── Session memory ─────────────────────────────────────────────
+// A unique session ID is sent with every request so the backend can
+// accumulate profile fields (salary, CIBIL, age) across conversation turns.
+// clearChat() generates a new UUID → the backend sees a fresh session.
+function generateUUID() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return Math.random().toString(36).substr(2, 9) +
+           Math.random().toString(36).substr(2, 9);
+}
+let currentSessionId = generateUUID();
+// ──────────────────────────────────────────────────────────────
+
 // ── Textarea auto-resize ────────────────────────────────────────
 function autoResize(el) {
   el.style.height = 'auto';
@@ -1031,6 +1045,8 @@ function clearChat() {
   chatArea.querySelectorAll('.msg-wrapper-outer').forEach(el => el.remove());
   emptyState.style.display = '';
   msgIndex = 0;
+  // Fresh context: new session ID wipes backend memory for this user
+  currentSessionId = generateUUID();
 }
 
 // ── Main send ───────────────────────────────────────────────────
@@ -1054,7 +1070,7 @@ async function sendQuery() {
     const res  = await fetch(`${API_BASE}/query`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ query }),
+      body:    JSON.stringify({ query, session_id: currentSessionId }),
     });
 
     if (!res.ok) {
@@ -1417,6 +1433,7 @@ async function submitDocument() {
     const formData = new FormData();
     formData.append('file', _selectedFile);
     formData.append('query', query);
+    formData.append('session_id', currentSessionId);
 
     const res = await fetch(`${API_BASE}/analyze-document`, {
       method: 'POST',

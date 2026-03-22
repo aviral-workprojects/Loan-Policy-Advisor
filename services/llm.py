@@ -186,12 +186,66 @@ INFORMAL / HINGLISH RULES:
         print(f"[LLM] profile: {pq.profile}")
         return pq
 
+    # ── Profile fallback extractor ────────────────────────────────────────────
+
+    _FALLBACK_EXTRACT_SYSTEM = "You are a data extractor. Output ONLY valid JSON, no markdown, no preamble."
+
+    def extract_profile_fallback(self, query: str) -> dict:
+        """
+        LLM-powered profile extraction for queries where regex found nothing.
+
+        Used as a last resort in pipeline.py when understand_query() returns an
+        empty profile and the query is long/complex enough to plausibly contain
+        financial data.  Returns a flat profile dict (same shape as
+        ParsedQuery.profile) or an empty dict on failure.
+        """
+        preprocessed = self._preprocess_query(query)
+        prompt = (
+            f'Extract any financial profile fields from this query: "{preprocessed}"\n'
+            "Return JSON ONLY with these keys (null if not mentioned):\n"
+            '{"monthly_income": number|null, "credit_score": number|null, '
+            '"age": number|null, "employment_type": string|null, '
+            '"work_experience_months": number|null}'
+        )
+        try:
+            raw = self._call(PARSE_MODEL, self._FALLBACK_EXTRACT_SYSTEM, prompt, max_tokens=150)
+            cleaned = re.sub(r"```(?:json)?", "", raw).strip().strip("`")
+            data = json.loads(cleaned)
+            profile: dict = {}
+            if isinstance(data.get("monthly_income"), (int, float)) and data["monthly_income"] > 0:
+                profile["monthly_income"] = float(data["monthly_income"])
+            if isinstance(data.get("credit_score"), (int, float)):
+                score = int(data["credit_score"])
+                if 300 <= score <= 900:
+                    profile["credit_score"] = score
+            if isinstance(data.get("age"), (int, float)):
+                age = int(data["age"])
+                if 18 <= age <= 80:
+                    profile["age"] = age
+            if isinstance(data.get("employment_type"), str) and data["employment_type"]:
+                profile["employment_type"] = data["employment_type"].lower()
+            if isinstance(data.get("work_experience_months"), (int, float)):
+                profile["work_experience_months"] = float(data["work_experience_months"])
+            return profile
+        except Exception as e:
+            print(f"[LLM] extract_profile_fallback failed: {e}")
+            return {}
+
     # ── Explain ──────────────────────────────────────────────────────────────
 
-    EXPLAIN_SYSTEM = """You are a financial explanation engine. Your ONLY job is to explain
-a decision already made by a deterministic rule engine. You cannot change it.
+    EXPLAIN_SYSTEM = """You are an AI Loan Advisor. You explain the rule engine's deterministic decision and provide context from the knowledge base.
 
-═══ ABSOLUTE RULES (violating any = critical failure) ═══════════════════════
+═══ ROUTING RULES (apply FIRST) ════════════════════════════════════════════
+RULE A — PROFILE EVALUATION (user provided salary/CIBIL/age):
+  → Follow the strict format below. State pre_decision verbatim.
+
+RULE B — FACTUAL, DOCUMENT, or COMPARISON query with pre_decision="Insufficient Data":
+  (e.g. "What is Axis interest rate?", "Axis vs ICICI comparison", "PAN card mandatory?")
+  → IGNORE pre_decision. DO NOT write "Insufficient Data".
+  → Answer directly using KNOWLEDGE CONTEXT. Use a helpful, conversational tone.
+  → JSON format: {"summary": "...", "detailed_explanation": "...", "recommendations": [...], "sources_cited": [...]}
+
+═══ ABSOLUTE RULES for PROFILE EVALUATIONS ═════════════════════════════════
 1. DECISION: Copy pre_decision VERBATIM into summary. Never change it.
 2. NUMBERS: Use ONLY actual_value and expected values from rule_results.
    Never invent figures, rates, or thresholds not explicitly in the data.
@@ -203,7 +257,7 @@ a decision already made by a deterministic rule engine. You cannot change it.
    Instead say "Field not provided — cannot evaluate this rule."
    DO NOT fabricate age/CIBIL/income failure reasons for missing fields.
 
-═══ STRICT OUTPUT FORMAT ════════════════════════════════════════════════════
+═══ STRICT OUTPUT FORMAT for PROFILE EVALUATIONS ═══════════════════════════
 
 1. DECISION SUMMARY
    State: "{pre_decision}"
@@ -227,11 +281,10 @@ a decision already made by a deterministic rule engine. You cannot change it.
    State: decision_context.best_bank
    Reason: decision_context.best_bank_reason (copy exactly if provided)
 
-5. IMPROVEMENT ACTIONS
-   3-4 items. Each MUST have a numeric target. Example format:
-   • Raise CIBIL from [actual] to [required] to qualify at [bank]
-   • Increase monthly income from ₹[actual] to ₹[required] for [bank]
-   • Provide [missing field] to complete eligibility check
+5. IMPROVEMENT ACTIONS (for rejected applicants)
+   3-4 items. Each MUST have a numeric target. Include:
+   • "Apply with a co-applicant to improve combined income" if income is borderline
+   • Specific score or income targets per bank
 
 ═════════════════════════════════════════════════════════════════════════════"""
 

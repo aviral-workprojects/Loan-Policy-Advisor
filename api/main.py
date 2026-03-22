@@ -38,7 +38,8 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 
 class QueryRequest(BaseModel):
-    query: str = Field(..., min_length=3, max_length=1000)
+    query:      str = Field(..., min_length=3, max_length=1000)
+    session_id: str = Field(default="default_session", description="Unique ID for user session")
 
 
 class BankComparison(BaseModel):
@@ -109,7 +110,7 @@ async def query_endpoint(request: QueryRequest):
     if _pipeline is None:
         raise HTTPException(status_code=503, detail="Pipeline not initialized")
     try:
-        result: AdvisorResponse = _pipeline.query(request.query)
+        result: AdvisorResponse = _pipeline.query(request.query, session_id=request.session_id)
         return QueryResponse(**result.__dict__)
     except Exception as e:
         import traceback
@@ -185,8 +186,9 @@ async def clear_cache():
 
 @app.post("/analyze-document", response_model=DocumentResponse)
 async def analyze_document(
-    file:  UploadFile = File(..., description="PDF, PNG, JPG, or TIFF document"),
-    query: str        = Form("", description="Optional natural language query to combine with document"),
+    file:       UploadFile = File(..., description="PDF, PNG, JPG, or TIFF document"),
+    query:      str        = Form("", description="Optional natural language query to combine with document"),
+    session_id: str        = Form("default_session", description="Unique ID for user session"),
 ):
     """
     Upload a document (salary slip, bank statement, ITR, CIBIL report, or scan)
@@ -222,6 +224,7 @@ async def analyze_document(
             file_bytes=file_bytes,
             filename=file.filename or "upload.pdf",
             query=query.strip(),
+            session_id=session_id,
         )
     except ValueError as e:
         # Validation errors (wrong type, too large, etc.)

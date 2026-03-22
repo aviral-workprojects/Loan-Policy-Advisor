@@ -79,7 +79,8 @@ class BM25:
 
     @staticmethod
     def _tokenise(text: str) -> list[str]:
-        return re.findall(r"[a-z0-9₹%.,]+", text.lower())
+        # Allow hyphens so terms like "pre-approved", "co-applicant" stay intact
+        return re.findall(r"[a-z0-9₹%.,\-]+", text.lower())
 
     def fit(self, corpus: list[str]) -> "BM25":
         self._n         = len(corpus)
@@ -164,6 +165,7 @@ _QUERY_FIELD_PATTERNS = [
     (re.compile(r"\bemployment\b|\bsalaried\b",            re.I), "employment_type"),
     (re.compile(r"\bexperience\b|\btenure\b",              re.I), "work_experience_months"),
     (re.compile(r"\binterest\s*rate\b|\broi\b",            re.I), "interest_rate"),
+    (re.compile(r"\bfee\b|\bcharge\b|\bpenalty\b|\bprocessing\b|\bforeclos\b", re.I), "fees"),
 ]
 
 def _query_field_hints(query: str) -> list[str]:

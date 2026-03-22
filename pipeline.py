@@ -154,9 +154,10 @@ class LoanAdvisorPipeline:
         self.fusion      = ContextFusion()
         self.search      = FallbackSearch()
         self.cache       = SemanticCache()
+        self.sessions:   dict[str, dict] = {}   # session_id → cumulative profile
         self.retrieval.ensure_ready()
 
-    def query(self, user_query: str) -> AdvisorResponse:
+    def query(self, user_query: str, session_id: str = "default_session") -> AdvisorResponse:
         t0 = time.perf_counter()
 
         # ── 0. Cache ──────────────────────────────────────────────────────────
@@ -170,14 +171,30 @@ class LoanAdvisorPipeline:
         signals: QuerySignals = understand_query(user_query)
         profile  = signals.profile
 
-        # Fall back to LLM parsing for complex queries where rule-based
-        # extraction produced an empty profile (rare ambiguous cases)
-        if not profile and len(user_query.split()) > 8:
-            logger.info("[Pipeline] Rule-based extraction empty — falling back to LLM parse")
-            parsed = self.llm.parse_query(user_query)
-            profile = parsed.profile
-            signals.banks = signals.banks or parsed.banks
-            signals.intent = signals.intent if signals.intent != "general" else parsed.intent
+        # ── 1a. Session memory — carry forward fields from previous turns ─────
+        if session_id not in self.sessions:
+            self.sessions[session_id] = {}
+        # New fields from this query override memory; memory fills any gaps
+        merged_session = {
+            **self.sessions[session_id],
+            **{k: v for k, v in profile.items() if v is not None},
+        }
+        self.sessions[session_id] = merged_session
+        profile = merged_session
+
+        # Fall back to LLM extraction for complex queries where rule-based
+        # extraction still produced an empty profile after session merge
+        if not profile and len(user_query.split()) > 5:
+            logger.info("[Pipeline] Regex + session empty — LLM fallback extraction")
+            fallback = self.llm.extract_profile_fallback(user_query)
+            if fallback:
+                profile = fallback
+                self.sessions[session_id].update(fallback)
+            else:
+                parsed = self.llm.parse_query(user_query)
+                profile = parsed.profile
+                signals.banks  = signals.banks  or parsed.banks
+                signals.intent = signals.intent if signals.intent != "general" else parsed.intent
 
         # DTI guard: sometimes returned as 40 instead of 0.40
         if profile.get("dti_ratio") and profile["dti_ratio"] > 1.5:

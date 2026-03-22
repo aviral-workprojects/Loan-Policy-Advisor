@@ -236,35 +236,46 @@ def compute_confidence(
     retrieval_scores: list[float] | None = None,
 ) -> tuple[float, dict]:
     """
-    Calibrated confidence score:
-        0.5 × avg_rule_score
-      + 0.3 × data_completeness
-      + 0.2 × retrieval_confidence
+    Two-path calibrated confidence:
 
-    retrieval_confidence:
-      - If retrieval_scores is provided → avg(scores) from FAISS/reranker (0–1)
-      - Otherwise → falls back to chunk_count / 8 heuristic
+    Rule Engine path  (data_completeness > 0):
+        base 0.85 + avg_rule_score × 0.14  →  cap 0.99
+        Reflects that deterministic rule evaluation is high-certainty.
 
-    Caps:
-      - Any critical rule (income/CIBIL/age) failed → cap ≤ 0.60
-      - Multiple banks failed                       → reduce by 0.04 per failed bank beyond 1
+    RAG-only path (no profile data provided):
+        base 0.60 + avg_retrieval × 0.20   →  cap 0.84
+        Reflects that pure retrieval answers are probabilistic.
+        Drops to 0.10 if no chunks were retrieved at all.
+
+    Both paths share the same critical-failure cap (≤ 0.60) and
+    multi-bank-rejection penalty (−0.04 per rejected bank beyond 1).
     """
     if not bank_results:
-        # No bank results — return minimal confidence with empty breakdown.
-        # Must return a tuple (float, dict) — the caller unpacks both values.
         return 0.3, {"final": 0.3, "note": "no bank results"}
 
     avg_rule_score = sum(r.rule_score for r in bank_results) / len(bank_results)
-    data_comp      = reasoning.data_completeness
-    # Use average similarity score if available, else chunk-count heuristic
-    if retrieval_scores and len(retrieval_scores) > 0:
-        retrieval_conf = round(min(float(sum(retrieval_scores)) / len(retrieval_scores), 1.0), 3)
+
+    if reasoning.data_completeness > 0:
+        # ── Rule engine path ─────────────────────────────────────────────────
+        base = 0.85
+        raw  = min(base + avg_rule_score * 0.14, 0.99)
+        path = "rule_engine"
+        retrieval_conf = 0.0   # not used on this path
     else:
-        retrieval_conf = min(retrieval_chunk_count / 8.0, 1.0)
+        # ── RAG-only path ────────────────────────────────────────────────────
+        base = 0.60
+        if retrieval_scores and len(retrieval_scores) > 0:
+            retrieval_conf = round(
+                min(float(sum(retrieval_scores)) / len(retrieval_scores), 1.0), 3
+            )
+        else:
+            retrieval_conf = min(retrieval_chunk_count / 8.0, 1.0)
+        raw  = min(base + retrieval_conf * 0.20, 0.84)
+        if retrieval_chunk_count == 0:
+            raw = 0.10
+        path = "rag_only"
 
-    raw = 0.5 * avg_rule_score + 0.3 * data_comp + 0.2 * retrieval_conf
-
-    # Check if any critical rule failed
+    # ── Shared caps / penalties ───────────────────────────────────────────────
     critical_failed = any(
         e.status == "fail" and e.field in {"monthly_income", "credit_score", "age"}
         for r in bank_results
@@ -273,20 +284,19 @@ def compute_confidence(
     if critical_failed:
         raw = min(raw, 0.60)
 
-    # Penalty for multiple failed banks
     n_failed = len(reasoning.rejected_banks)
     if n_failed > 1:
         raw -= (n_failed - 1) * 0.04
 
     final = round(max(0.05, min(raw, 0.99)), 2)
     breakdown = {
-        "rule_score_component":     round(0.5 * avg_rule_score, 3),
-        "data_completeness_component": round(0.3 * data_comp, 3),
-        "retrieval_component":      round(0.2 * retrieval_conf, 3),
+        "path":                     path,
+        "base":                     base,
         "avg_rule_score":           round(avg_rule_score, 3),
-        "data_completeness":        round(data_comp, 3),
-        "retrieval_confidence":     round(retrieval_conf, 3),
+        "data_completeness":        round(reasoning.data_completeness, 3),
+        "retrieval_confidence":     round(retrieval_conf, 3) if path == "rag_only" else None,
         "critical_failure_cap":     critical_failed,
+        "rule_engine_active":       path == "rule_engine",
         "final":                    final,
     }
     return final, breakdown

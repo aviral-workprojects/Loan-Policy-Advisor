@@ -111,6 +111,7 @@ class DocumentProcessor:
         file_bytes: bytes,
         filename:   str,
         query:      str = "",
+        session_id: str = "default_session",
     ) -> DocumentResult:
         """
         Process an uploaded document and return a loan eligibility result.
@@ -177,7 +178,7 @@ class DocumentProcessor:
 
         # ── 6. Run through existing pipeline ──────────────────────────────
         pipeline = self._get_pipeline()
-        advisor_response = self._run_pipeline(pipeline, merged_query, merged_profile, raw_text)
+        advisor_response = self._run_pipeline(pipeline, merged_query, merged_profile, raw_text, session_id)
 
         # ── 7. Build result ────────────────────────────────────────────────
         latency_ms = round((time.perf_counter() - t0) * 1000, 1)
@@ -279,7 +280,7 @@ class DocumentProcessor:
         self._pipeline = LoanAdvisorPipeline()
         return self._pipeline
 
-    def _run_pipeline(self, pipeline, merged_query: str, merged_profile: dict, raw_text: str):
+    def _run_pipeline(self, pipeline, merged_query: str, merged_profile: dict, raw_text: str, session_id: str = "default_session"):
         """
         Inject the merged profile directly into the pipeline, bypassing LLM parse.
         This is the key integration point: document data has highest trust, so we
@@ -295,6 +296,19 @@ class DocumentProcessor:
         from services.fusion import ContextFusion
 
         t0 = _time.perf_counter()
+
+        # ── Session memory sync ───────────────────────────────────────────────
+        # Ensure the pipeline has a sessions store (safety check for test scenarios)
+        if not hasattr(pipeline, "sessions"):
+            pipeline.sessions = {}
+        if session_id not in pipeline.sessions:
+            pipeline.sessions[session_id] = {}
+        # Write document-extracted fields into session memory
+        pipeline.sessions[session_id].update(
+            {k: v for k, v in merged_profile.items() if v is not None}
+        )
+        # Read back full session profile (merges doc data with any prior chat context)
+        merged_profile = {**pipeline.sessions[session_id], **merged_profile}
 
         # DTI guard
         if merged_profile.get("dti_ratio") and merged_profile["dti_ratio"] > 1.5:
