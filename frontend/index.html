@@ -678,6 +678,158 @@ body {
   .input-area, .message-wrapper, .header { padding-left: 16px; padding-right: 16px; }
   .empty-cards { grid-template-columns: 1fr; }
 }
+
+/* ── Upload panel ─────────────────────────────────────────────────────── */
+.upload-panel {
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.upload-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-3);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  user-select: none;
+  transition: background 0.15s;
+}
+.upload-panel-header:hover { background: var(--bg-4); color: var(--text); }
+.upload-panel-header .up-arrow { margin-left: auto; transition: transform 0.2s; }
+.upload-panel-header.open .up-arrow { transform: rotate(180deg); }
+.upload-panel-body {
+  display: none;
+  padding: 12px;
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+}
+.upload-panel-body.open { display: block; }
+
+/* Drop zone */
+.drop-zone {
+  border: 2px dashed var(--border-hover);
+  border-radius: var(--radius-sm);
+  padding: 20px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.drop-zone input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.drop-zone-icon { font-size: 24px; margin-bottom: 8px; }
+.drop-zone-text { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+.drop-zone-text strong { color: var(--text-2); font-size: 13px; display: block; margin-bottom: 4px; }
+
+/* Selected file indicator */
+.file-selected {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.file-selected .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-remove { cursor: pointer; color: var(--text-3); font-size: 14px; flex-shrink: 0; }
+.file-remove:hover { color: var(--red); }
+
+/* Optional query for upload */
+.upload-query {
+  width: 100%;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12.5px;
+  margin-top: 8px;
+  resize: none;
+  outline: none;
+}
+.upload-query:focus { border-color: var(--accent); }
+.upload-query::placeholder { color: var(--text-3); }
+
+/* Upload submit button */
+.upload-btn {
+  width: 100%;
+  padding: 9px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.15s;
+  font-family: var(--font);
+}
+.upload-btn:hover { background: #6ba3fa; }
+.upload-btn:disabled { background: var(--bg-4); color: var(--text-3); cursor: not-allowed; }
+
+/* Upload progress / status */
+.upload-status {
+  font-size: 11.5px;
+  color: var(--text-3);
+  text-align: center;
+  margin-top: 6px;
+  min-height: 16px;
+}
+
+/* Extracted data display in chat */
+.extracted-data-box {
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.extracted-data-header {
+  padding: 8px 14px;
+  background: var(--bg-3);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.extracted-data-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  padding: 1px;
+}
+.extracted-field {
+  background: var(--bg-2);
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.extracted-field .ef-label { color: var(--text-3); margin-bottom: 2px; }
+.extracted-field .ef-value { color: var(--text); font-weight: 500; font-family: var(--mono); }
+.ef-method {
+  padding: 6px 14px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-3);
+}
 </style>
 </head>
 <body>
@@ -723,6 +875,51 @@ body {
       <span style="font-size:12px;color:var(--text-3);background:var(--bg-3);padding:3px 9px;border-radius:100px;border:1px solid var(--border)">HDFC</span>
       <span style="font-size:12px;color:var(--text-3);background:var(--bg-3);padding:3px 9px;border-radius:100px;border:1px solid var(--border)">ICICI</span>
       <span style="font-size:12px;color:var(--text-3);background:var(--bg-3);padding:3px 9px;border-radius:100px;border:1px solid var(--border)">SBI</span>
+    </div>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">Analyze document</div>
+
+    <div class="upload-panel" id="uploadPanel">
+      <div class="upload-panel-header" onclick="toggleUploadPanel(this)">
+        <span>📄</span>
+        <span>Upload salary slip / statement</span>
+        <span class="up-arrow">▾</span>
+      </div>
+      <div class="upload-panel-body" id="uploadPanelBody">
+
+        <!-- Drop zone -->
+        <div class="drop-zone" id="dropZone"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event)">
+          <input type="file" id="fileInput"
+                 accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.bmp,.webp"
+                 onchange="handleFileSelect(event)"/>
+          <div class="drop-zone-icon">📎</div>
+          <div class="drop-zone-text">
+            <strong>Drop file or click to browse</strong>
+            PDF, PNG, JPG, TIFF · Max 10 MB
+          </div>
+        </div>
+
+        <!-- Selected file -->
+        <div class="file-selected" id="fileSelected" style="display:none">
+          <span>📄</span>
+          <span class="file-name" id="fileNameDisplay"></span>
+          <span class="file-remove" onclick="clearFile()" title="Remove file">✕</span>
+        </div>
+
+        <!-- Optional query -->
+        <textarea class="upload-query" id="uploadQuery" rows="2"
+          placeholder="Optional: any additional context (e.g. 'I want Axis Bank loan')"></textarea>
+
+        <!-- Submit -->
+        <button class="upload-btn" id="uploadBtn" onclick="submitDocument()" disabled>
+          Analyze Document
+        </button>
+        <div class="upload-status" id="uploadStatus"></div>
+      </div>
     </div>
 
     <div class="sidebar-bottom">
@@ -1154,6 +1351,225 @@ async function checkHealth() {
 }
 
 checkHealth();
+
+// ── Upload state ────────────────────────────────────────────────────────────
+let _selectedFile = null;
+
+function toggleUploadPanel(header) {
+  header.classList.toggle('open');
+  document.getElementById('uploadPanelBody').classList.toggle('open');
+}
+
+// ── Drag and drop ────────────────────────────────────────────────────────────
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.add('dragover');
+}
+function handleDragLeave(e) {
+  document.getElementById('dropZone').classList.remove('dragover');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) setSelectedFile(file);
+}
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) setSelectedFile(file);
+}
+
+function setSelectedFile(file) {
+  _selectedFile = file;
+  document.getElementById('fileNameDisplay').textContent = file.name;
+  document.getElementById('fileSelected').style.display = 'flex';
+  document.getElementById('uploadBtn').disabled = false;
+  document.getElementById('uploadStatus').textContent =
+    `${(file.size / 1024).toFixed(0)} KB · ${file.type || 'unknown type'}`;
+}
+
+function clearFile() {
+  _selectedFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileSelected').style.display = 'none';
+  document.getElementById('uploadBtn').disabled = true;
+  document.getElementById('uploadStatus').textContent = '';
+}
+
+// ── Submit document ──────────────────────────────────────────────────────────
+async function submitDocument() {
+  if (!_selectedFile || isLoading) return;
+
+  const query = document.getElementById('uploadQuery').value.trim();
+
+  // Hide empty state
+  document.getElementById('emptyState').style.display = 'none';
+
+  setLoading(true);
+  document.getElementById('uploadBtn').disabled = true;
+  document.getElementById('uploadStatus').textContent = 'Processing document…';
+
+  // Show user "message" representing the upload
+  appendUploadMsg(_selectedFile.name, query);
+  const thinkId = appendThinking();
+
+  try {
+    const formData = new FormData();
+    formData.append('file', _selectedFile);
+    formData.append('query', query);
+
+    const res = await fetch(`${API_BASE}/analyze-document`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      removeElement(thinkId);
+      appendErrorMsg(err.detail || `HTTP ${res.status}`);
+      return;
+    }
+
+    const data = await res.json();
+    removeElement(thinkId);
+    appendDocumentResult(data);
+
+  } catch (e) {
+    removeElement(thinkId);
+    appendErrorMsg('Could not reach the API. Make sure the server is running.');
+  } finally {
+    setLoading(false);
+    document.getElementById('uploadBtn').disabled = !_selectedFile;
+    document.getElementById('uploadStatus').textContent =
+      _selectedFile ? `${(_selectedFile.size / 1024).toFixed(0)} KB · Ready` : '';
+  }
+}
+
+// ── Append upload "message" ───────────────────────────────────────────────────
+function appendUploadMsg(filename, query) {
+  const div = document.createElement('div');
+  div.className = 'msg-wrapper-outer';
+  div.innerHTML = `
+    <div class="message-wrapper">
+      <div class="msg user">
+        <div class="msg-avatar">👤</div>
+        <div class="msg-body">
+          <div class="msg-content">
+            📎 <strong>${escHtml(filename)}</strong>
+            ${query ? `<br/><span style="color:var(--text-2);font-size:13px">${escHtml(query)}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('chatArea').appendChild(div);
+  scrollToBottom();
+}
+
+// ── Render document analysis result ──────────────────────────────────────────
+function appendDocumentResult(data) {
+  const id = `msg-${++msgIndex}`;
+
+  const decLabel = data.decision || 'Unknown';
+  const decClass =
+    decLabel === 'Eligible'           ? 'eligible' :
+    decLabel === 'Partially Eligible' ? 'partial'  :
+    decLabel === 'Not Eligible'       ? 'rejected' : 'unknown';
+  const decIcon = decClass === 'eligible' ? '✓' : decClass === 'partial' ? '~' : decClass === 'rejected' ? '✗' : '?';
+
+  // Extracted data panel
+  const ed = data.extracted_data || {};
+  const edFields = [
+    { label: 'Monthly Income', value: ed.monthly_income ? `₹${Number(ed.monthly_income).toLocaleString('en-IN')}` : '—' },
+    { label: 'CIBIL Score',    value: ed.credit_score   || '—' },
+    { label: 'Age',            value: ed.age ? `${ed.age} years` : '—' },
+    { label: 'Employment',     value: ed.employment_type ? ed.employment_type.replace('_', ' ') : '—' },
+    { label: 'Experience',     value: ed.work_experience_months ? `${ed.work_experience_months} months` : '—' },
+    { label: 'Name',           value: ed.name || '—' },
+  ];
+  const edHtml = `
+    <div class="extracted-data-box">
+      <div class="extracted-data-header">🔍 Extracted from document</div>
+      <div class="extracted-data-grid">
+        ${edFields.map(f => `
+          <div class="extracted-field">
+            <div class="ef-label">${f.label}</div>
+            <div class="ef-value">${escHtml(String(f.value))}</div>
+          </div>`).join('')}
+      </div>
+      <div class="ef-method">Method: ${escHtml(data.processing_method || 'text_layer')} · Hash: ${escHtml(data.file_hash || '')}</div>
+    </div>`;
+
+  // Bank cards
+  const bankCards = (data.banks_compared || []).map(b => {
+    const pct  = b.score || 0;
+    const fill = b.eligible ? 'fill-green' : (pct >= 50 ? 'fill-amber' : 'fill-red');
+    const cls  = b.eligible ? 'eligible-card' : 'rejected-card';
+    return `
+      <div class="bank-card ${cls}">
+        <div class="bank-card-header">
+          <div class="bank-name">${escHtml(b.name)}</div>
+          <span class="bank-badge ${b.eligible ? 'badge-yes' : 'badge-no'}">${b.eligible ? 'ELIGIBLE' : 'REJECTED'}</span>
+        </div>
+        <div class="bank-rate">${escHtml(b.rate || 'N/A')}</div>
+        <div class="bank-score-bar"><div class="bank-score-fill ${fill}" style="width:${pct}%"></div></div>
+        <div class="bank-score-label">Score: ${pct}%</div>
+      </div>`;
+  }).join('');
+
+  const recs = (data.recommendations || []);
+  const recsHtml = recs.length ? `
+    <div class="expand-section">
+      <div class="expand-header" onclick="toggleExpand(this)">
+        <div class="expand-header-left"><span>💡</span> Recommendations (${recs.length})</div>
+        <span class="expand-icon">▾</span>
+      </div>
+      <div class="expand-body">
+        <div class="recs-list">
+          ${recs.map((r, i) => `<div class="rec-item"><div class="rec-num">${i+1}</div><div>${escHtml(r)}</div></div>`).join('')}
+        </div>
+      </div>
+    </div>` : '';
+
+  const conf  = Math.round((data.confidence || 0) * 100);
+  const latency = data.latency_ms ? `${Math.round(data.latency_ms)}ms` : '';
+
+  const div = document.createElement('div');
+  div.className = 'msg-wrapper-outer';
+  div.innerHTML = `
+    <div class="message-wrapper">
+      <div class="msg assistant" id="${id}">
+        <div class="msg-avatar">✦</div>
+        <div class="msg-body">
+          <div class="msg-content">
+            <div class="decision-banner ${decClass}">${decIcon} ${escHtml(decLabel)}</div>
+
+            ${edHtml}
+
+            ${data.best_bank ? `<div style="font-size:12.5px;color:var(--text-3);margin-bottom:12px">
+              Best option: <strong style="color:var(--accent)">${escHtml(data.best_bank)}</strong>
+              ${data.best_bank_reason ? `· ${escHtml(data.best_bank_reason)}` : ''}
+            </div>` : ''}
+
+            <div class="summary-text">${formatText(data.summary || '')}</div>
+
+            ${bankCards ? `<div class="banks-grid">${bankCards}</div>` : ''}
+
+            ${recsHtml}
+
+            <div class="msg-meta">
+              <div class="meta-chip">
+                <div class="confidence-bar"><div class="confidence-fill" style="width:${conf}%"></div></div>
+                Confidence <span>${conf}%</span>
+              </div>
+              ${latency ? `<div class="meta-chip">⏱ <span>${latency}</span></div>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('chatArea').appendChild(div);
+  scrollToBottom();
+}
 </script>
 </body>
 </html>
