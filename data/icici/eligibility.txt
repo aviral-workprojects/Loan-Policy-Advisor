@@ -1,41 +1,103 @@
-ICICI Bank Personal Loan - Complete Guide
+ICICI Bank Personal Loan — Complete Guide and Decision Logic (2026)
 
-ICICI Bank provides personal loans to salaried and self-employed individuals for various needs including travel, medical emergencies, home renovation, and debt consolidation.
+Sources: ICICI Bank Direct, ClearTax, NoBroker, Paisabazaar (Feb 2026)
+Data confidence: High | Last updated: February 2026
+Approval difficulty: LOW — most digital-friendly and fastest among major banks
 
-ELIGIBILITY CRITERIA:
-- Age: 23 to 58 years
-- Minimum monthly income: ₹25,000 (higher than most private banks)
-- CIBIL score: 700 or above (750+ for best rates)
-- Employment: Salaried in MNCs, PSUs, or government; self-employed professionals
-- Work experience: Minimum 24 months total; 1 year with current employer
-- Employer category: A/B/C rated companies preferred
+═══════════════════════════════════════════════════════
+ELIGIBILITY CRITERIA
+═══════════════════════════════════════════════════════
 
-INTEREST RATES:
-- Starting from 10.65% per annum
-- Rates vary: 10.65% – 16% based on profile
-- Pre-approved customers get preferential rates
+Age: 23 to 65 years (updated; prior data had 58 — research confirms 65 is correct)
+Minimum monthly income: ₹30,000 (updated from ₹25,000 per 2026 data)
+CIBIL score: 700 or above; 750+ for instant pre-approved offers
+Employment: Salaried (MNCs, PSUs, government, private companies A/B/C rated); self-employed; professionals
+Work experience: Minimum 24 months total; 1 year with current employer; 36 months for self-employed non-professionals
+Employer category: Category A/B/C rated companies preferred; MNCs and PSUs get best terms
+Salary account: Not mandatory; ICICI salary account holders get pre-approved access
 
-LOAN FEATURES:
-- Amount: ₹50,000 to ₹50 lakh
-- Tenure: 12 to 72 months
-- Processing fees: 0.5% to 2.5% + applicable taxes
-- No prepayment charges after 12 EMIs
-- Part-prepayment allowed
+SELF-EMPLOYED SPECIFIC:
+Non-professionals: Minimum annual net profit of ₹1 lakh required (not just gross turnover)
+Self-employed doctors: Relaxed age (25 years minimum) and 3-year (36 months) business stability
+Income variability not allowed — must show consistent income through 6 months bank statements
 
-DOCUMENTS:
-- PAN Card (mandatory)
-- Aadhaar Card
-- Last 3 months salary slips
-- Last 6 months bank statements
-- Employment letter / ID
+═══════════════════════════════════════════════════════
+INTEREST RATES (2026)
+═══════════════════════════════════════════════════════
+
+Starting rate: 9.99% per annum
+Range: 9.99% to 16.5% p.a. (narrower range than Axis/HDFC — better for lower profiles)
+Pre-approved customers: Preferential rates below 12%
+New to credit (NTC): Rate premium of 0.5%–1.0% above standard band
+
+═══════════════════════════════════════════════════════
+LOAN FEATURES
+═══════════════════════════════════════════════════════
+
+Loan amount: ₹50,000 to ₹50 lakh (highest standard ceiling among major banks)
+Tenure: 12 to 72 months (6 years)
+Processing fee: Up to 2.50% + GST
+Prepayment: 3%–5% charges; NIL after 12 EMIs (industry standard)
+Part-prepayment: Allowed at any time (no restrictions on partial payments)
+Free look period: 15-day window after loan sanction to cancel without penalty
+Late payment: 5% p.a. on overdue (lowest penalty among major banks)
 
 ICICI INSTA PERSONAL LOAN:
-- For pre-approved customers only
-- Instant disbursal in minutes
-- No documentation required
-- Amount up to ₹25 lakh
+For pre-approved customers only
+3-second disbursal — industry-leading speed
+No documentation required for pre-approved
+Up to ₹25 lakh instantly
 
-COMPARISON NOTES:
-- Higher income threshold than Axis and SBI
-- Longer minimum tenure compared to some peers
-- Strong digital process — fully online application possible
+═══════════════════════════════════════════════════════
+SPECIAL PRODUCTS
+═══════════════════════════════════════════════════════
+
+Insta Personal Loan: Pre-approved customers, 3-second disbursal, zero paperwork
+Flexi Loan: Withdraw and repay multiple times within approved limit
+Pre-approved for salary account holders: Rate and amount pre-determined on login
+
+DIGITAL PROCESS:
+Fully online application possible
+Video KYC available
+Instant disbursal for select customers
+15-day free look period (unlike most banks — best consumer protection feature)
+
+═══════════════════════════════════════════════════════
+DOCUMENTS REQUIRED
+═══════════════════════════════════════════════════════
+
+Mandatory: PAN Card, Aadhaar/Passport/Voter ID
+Income: Last 3 months salary slips
+Banking: Last 6 months bank statements (most extensive among major banks)
+Tax: ITR last 2 years (for self-employed)
+Employment: Employment letter / company ID
+
+═══════════════════════════════════════════════════════
+DTI GUIDELINES
+═══════════════════════════════════════════════════════
+
+EMI-to-NMI ratio: Favorable if total obligations are 50%–65% of net monthly income
+ICICI is most flexible on DTI among major banks
+Part-prepayment reduces outstanding and therefore improves DTI for future applications
+
+═══════════════════════════════════════════════════════
+REJECTION TRIGGERS
+═══════════════════════════════════════════════════════
+
+CIBIL below 700: Rejection for standard products
+Monthly income below ₹30,000: Rejection
+Self-employed with less than 24 months (non-professionals less than 36 months): Rejection
+Self-employed net profit below ₹1 lakh/year: Rejection
+Employer category below C-rated: Higher scrutiny, possible rejection
+
+═══════════════════════════════════════════════════════
+RECOMMENDATION LOGIC
+═══════════════════════════════════════════════════════
+
+Best for digital-savvy applicants: Fully online process, fastest among major banks
+Best for ₹50 lakh loan seekers: Highest standard ceiling (₹50 lakh vs ₹40 lakh at Axis/HDFC)
+For pre-approved ICICI customers: 3-second disbursal — no other bank matches this
+For self-employed doctors: Relaxed 25-year age and 3-year stability (not the standard 36-month rule)
+For prepayment: Part-prepayment allowed anytime with NIL charges after 12 EMIs
+For NTC (first-time) borrowers: ICICI uses alternate data and bank statement analysis; more accommodating than public banks
+Free look period: 15-day cancellation right — best consumer protection among all major banks

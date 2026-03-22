@@ -1,3 +1,10 @@
+# Axis Bank — Personal Loan Eligibility Rules
+# Sources: Bank Direct + Paisabazaar (Feb–Mar 2026)
+# Rate: 9.98% – 22% p.a. | Loan: ₹50,000 – ₹40 lakh | Tenure: 12 – 84 months
+# Key note: ₹15,000 threshold for existing Axis customers; ₹25,000 for new customers
+# CIBIL updated to 750 (strict_cibil_cutoff = Yes per research data)
+# Self-employed require 36 months business continuity (not 12)
+
 bank: Axis
 loan_type: personal
 logic: all
@@ -13,28 +20,34 @@ rules:
     field: age
     operator: "<="
     value: 60
-    message: "Maximum age is 60 years"
+    message: "Maximum age is 60 years at time of loan maturity"
 
   - id: monthly_income
     field: monthly_income
     operator: ">="
     value: 15000
-    message: "Minimum monthly income is ₹15,000"
+    message: "Minimum monthly income is ₹15,000 (existing Axis Bank customers) or ₹25,000 (new customers)"
 
   - id: credit_score
     field: credit_score
     operator: ">="
-    value: 720
-    message: "Minimum CIBIL score is 720"
+    value: 750
+    message: "Minimum CIBIL score is 750 for standard approval; scores 700–749 may be considered at higher rates"
 
   - id: employment_type
     field: employment_type
     operator: "in"
-    value: ["salaried", "self_employed", "professional"]
-    message: "Employment type must be salaried, self-employed, or professional"
+    value: ["salaried", "self_employed", "professional", "government"]
+    message: "Employment must be salaried (public/private/govt), self-employed, or professional (doctors, CAs, etc.)"
 
   - id: work_experience
     field: work_experience_months
     operator: ">="
     value: 12
-    message: "Minimum work experience is 12 months"
+    message: "Minimum 12 months employment history for salaried; 36 months business continuity for self-employed"
+
+  - id: dti_ratio
+    field: dti_ratio
+    operator: "<="
+    value: 0.50
+    message: "Total EMI obligations (including proposed loan) must not exceed 50% of net monthly income"

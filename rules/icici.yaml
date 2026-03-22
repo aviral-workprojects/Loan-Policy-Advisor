@@ -1,3 +1,13 @@
+# ICICI Bank — Personal Loan Eligibility Rules
+# Sources: Bank Direct + ClearTax, NoBroker, Paisabazaar (Feb 2026)
+# Rate: 9.99% – 16.5% p.a. | Loan: ₹50,000 – ₹50 lakh | Tenure: 12 – 72 months
+# Key change: min_income updated to ₹30,000 (research shows ₹30k; prior file had ₹25k)
+# Key change: max_age updated to 65 (research shows 65; prior file had 58)
+# Self-employed non-professionals: min annual net profit ₹1 lakh
+# Self-employed doctors: relaxed age (25) and stability (36 months)
+# Pre-approved customers: 3-second disbursal; 15-day free look period
+# Note: approval_difficulty = Low (lowest among major banks per research)
+
 bank: ICICI
 loan_type: personal
 logic: all
@@ -7,34 +17,40 @@ rules:
     field: age
     operator: ">="
     value: 23
-    message: "Minimum age is 23 years"
+    message: "Minimum age is 23 years (25 years for self-employed doctors)"
 
   - id: age_max
     field: age
     operator: "<="
-    value: 58
-    message: "Maximum age is 58 years"
+    value: 65
+    message: "Maximum age is 65 years at loan maturity (updated from 58 per 2026 policy)"
 
   - id: monthly_income
     field: monthly_income
     operator: ">="
-    value: 25000
-    message: "Minimum monthly income is ₹25,000"
+    value: 30000
+    message: "Minimum monthly income is ₹30,000; higher income qualifies for preferential rates"
 
   - id: credit_score
     field: credit_score
     operator: ">="
     value: 700
-    message: "Minimum CIBIL score is 700"
+    message: "Minimum CIBIL score is 700; 750+ for best rates and instant pre-approval"
 
   - id: employment_type
     field: employment_type
     operator: "in"
-    value: ["salaried", "self_employed"]
-    message: "Employment must be salaried or self-employed"
+    value: ["salaried", "self_employed", "professional"]
+    message: "Employment must be salaried (MNCs, PSUs, government) or self-employed/professional"
 
   - id: work_experience
     field: work_experience_months
     operator: ">="
     value: 24
-    message: "Minimum work experience is 24 months"
+    message: "Minimum 24 months total work experience; minimum 1 year with current employer; 36 months for self-employed non-professionals"
+
+  - id: dti_ratio
+    field: dti_ratio
+    operator: "<="
+    value: 0.55
+    message: "Total EMI-to-net-monthly-income ratio should not exceed 55%; applications favorable at 50–65% per ICICI underwriting"

@@ -1,39 +1,99 @@
-HDFC Bank Personal Loan - Eligibility and Features
+HDFC Bank Personal Loan — Eligibility, Features, and Decision Logic (2026)
 
-HDFC Bank is India's largest private bank offering competitive personal loan products.
+Sources: HDFC Bank Direct, NoBroker, ClearTax, Loanbaba, Paisabazaar (Mar 2026)
+Data confidence: High | Last updated: March 2026
 
-ELIGIBILITY CRITERIA:
-- Age: 21 to 60 years
-- Minimum monthly income: ₹20,000
-- CIBIL score: 750 or above (strictest among major private banks)
-- Employment: Salaried, self-employed, or professionals
-- Work experience: Minimum 12 months (2 years preferred)
-- Debt-to-income ratio: Must not exceed 50%
+═══════════════════════════════════════════════════════
+ELIGIBILITY CRITERIA
+═══════════════════════════════════════════════════════
 
-INTEREST RATES:
-- Starting from 10.50% per annum
-- Range: 10.50% to 21% based on profile
-- Special rates for HDFC salary account holders
+Age: 21 to 60 years at loan maturity
+Minimum monthly income: ₹25,000 (updated from ₹20,000 per 2026 research)
+CIBIL score: 700 floor; 750+ for prime rates; some sources cite 600 minimum (bank direct vs aggregator variance)
+Employment: Salaried, self-employed, professionals, government employees
+Work experience: Minimum 12 months; 24 months preferred for best rates
+DTI: Must not exceed 50% of net monthly income (strictly evaluated)
+Salary account: Not mandatory; HDFC salary account holders get pre-approved offers
 
-LOAN FEATURES:
-- Amount: ₹50,000 to ₹40 lakh
-- Tenure: 12 to 60 months
-- Processing fee: Up to 2.5% of loan amount + GST
-- Foreclosure charges: 2-4% after 12 months
-- 24-hour disbursal for pre-approved offers
+CIBIL TIER IMPACT AT HDFC:
+750+: Prime rate access (9.98%–12%); pre-approved status possible
+700–749: Standard approval; rates 13%–18%
+600–699: Possible with enhanced documentation; rates 18%–24%
+Below 600: Rejection from standard products; New-to-Credit (NTC) applicants may use alternate data
 
-DOCUMENTS:
-- Aadhaar Card
-- PAN Card
-- Salary slips (last 3 months)
-- Bank statements (last 3 months)
-- Employment proof
+═══════════════════════════════════════════════════════
+INTEREST RATES (2026)
+═══════════════════════════════════════════════════════
 
-UNIQUE FEATURES:
-- SmartEMI option — convert purchases to EMI
-- Salary account customers get pre-approved offers
-- Online application with video KYC
-- Highest credit score requirement in category (750+)
+Starting rate: 9.98% per annum
+Range: 9.98% to 24% p.a.
+HDFC salary account holders: Special preferential rates
+Golden Edge product (NMI > ₹75,000): Premium rates starting 10.75%
 
-NOTE: HDFC requires the highest CIBIL score (750) among major banks.
-DTI ratio is strictly evaluated and must be below 50%.
+═══════════════════════════════════════════════════════
+LOAN FEATURES
+═══════════════════════════════════════════════════════
+
+Loan amount: ₹50,000 to ₹75 lakh (₹25 lakh cap for digital-only applications)
+Tenure: 3 to 72 months
+Processing fee: 0.99% to 2.50% (cap ₹6,500 + GST for standard; may vary by product)
+Foreclosure: 2%–4% of outstanding principal (after 12 EMIs minimum lock-in)
+Disbursal: 24 hours for pre-approved; 10-second disbursal for select pre-approved customers
+Late payment: 24% p.a. (2% per month) on overdue — highest penalty among major banks
+
+PREPAYMENT TERMS:
+Lock-in: 12 months — no prepayment in first year
+After 12 months: 2%–4% of outstanding principal as charges
+Less favourable than Axis (which allows 25% free annually after 12 EMIs)
+Avoid recommending HDFC for borrowers expecting early repayment
+
+═══════════════════════════════════════════════════════
+SPECIAL PRODUCTS
+═══════════════════════════════════════════════════════
+
+Golden Edge: For NMI > ₹75,000; loan amounts >₹20 lakh; premium rates from 10.75%
+Diva: Women-focused product with special terms
+SmartEMI: Convert large purchases to EMI at point of sale
+Pre-approved: Instant disbursal including 10-second disbursals for select salary account customers
+Video KYC: Fully digital application + verification available
+NTC (New to Credit) pathway: Bank statement analysis and alternate data scoring — more accommodating than SBI for first-time borrowers
+
+═══════════════════════════════════════════════════════
+DOCUMENTS REQUIRED
+═══════════════════════════════════════════════════════
+
+Mandatory: ID Proof, Address Proof, Income Proof
+KYC: Aadhaar, Voter ID, Utility Bills (any two)
+Income: Last 2 months salary slips (reduced from 3 months — quicker processing)
+Banking: Last 3–6 months bank statements
+Tax: Latest Form 16
+
+═══════════════════════════════════════════════════════
+DTI GUIDELINES
+═══════════════════════════════════════════════════════
+
+Hard ceiling: 50% DTI
+HDFC strictness: Among the most rigorous DTI evaluations among private banks
+Recommendation: Reduce existing EMIs before applying to HDFC if close to 50% threshold
+
+═══════════════════════════════════════════════════════
+REJECTION TRIGGERS
+═══════════════════════════════════════════════════════
+
+CIBIL below 600: Rejection (hard floor)
+CIBIL 600–699: High scrutiny; require enhanced documentation
+Income below ₹25,000/month: Rejection for standard product
+DTI above 50%: Rejected
+Employment below 12 months: High rejection probability
+Multiple recent credit inquiries: Negative signal
+
+═══════════════════════════════════════════════════════
+RECOMMENDATION LOGIC
+═══════════════════════════════════════════════════════
+
+For HNI borrowers (NMI > ₹75,000): Golden Edge product for >₹20 lakh with best rates
+For first-time/NTC borrowers: HDFC uses alternate data (bank statements) — better than SBI for NTC
+For prepayment-focused: Avoid HDFC; choose Axis instead (25% free annual prepayment)
+For women applicants: Diva product may offer additional benefits
+For large loan amounts: HDFC can go up to ₹75 lakh — highest limit among major banks
+Income clubbing: Spouse income clubbing permitted to increase eligibility

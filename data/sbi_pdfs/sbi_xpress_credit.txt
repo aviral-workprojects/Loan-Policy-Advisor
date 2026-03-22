@@ -1,42 +1,122 @@
-SBI (State Bank of India) Personal Loan - Xpress Credit
+SBI (State Bank of India) Personal Loan — Xpress Credit and Products (2026)
 
-SBI is India's largest public sector bank with the widest reach.
+Sources: SBI Bank Direct, ClearTax, Paisabazaar (Mar 2026)
+Data confidence: High | Last updated: March 2026
+Largest public sector bank in India — widest reach, lowest income threshold
 
-ELIGIBILITY CRITERIA:
-- Age: 21 to 58 years (loan must be repaid before age 58)
-- Minimum monthly income: ₹15,000 (lowest threshold among major banks)
-- CIBIL score: 700 or above
-- Employment: Salaried (government, PSU, private sector), self-employed
-- Work experience: Minimum 12 months
-- Relationship with SBI: Salary account with SBI preferred but not mandatory
+═══════════════════════════════════════════════════════
+ELIGIBILITY CRITERIA
+═══════════════════════════════════════════════════════
 
-INTEREST RATES:
-- Starting from 11.05% per annum (slightly higher than private banks)
-- Government employees get preferential rates starting 11.05%
-- Private sector employees: 12% to 14%
-- Self-employed: 13% to 15%
+Age: 21 to 76 years at loan maturity (updated; max repayment age 76 for personal loan)
+Minimum monthly income: ₹15,000 standard; ₹5,000 for government/defence/pensioners under Xpress Credit
+CIBIL score: 750 or above (strict_cibil_cutoff = Yes per 2026 data; previously reported as 700)
+Employment: Government/PSU employees (primary target), defence, para-military, coast guards, pensioners; also private salaried and self-employed
+Work experience: Minimum 12 months
+Salary account: MANDATORY for Xpress Credit — salary/pension must be routed through SBI
 
-LOAN FEATURES:
-- Amount: ₹1,000 to ₹20 lakh
-- Tenure: 6 to 72 months
-- No processing fees for existing SBI customers
-- Processing fee: 1.5% for new customers
-- No pre-payment penalty after 6 months
+CRITICAL NOTE ON CIBIL: SBI strict_cibil_cutoff is YES per 2026 research.
+The 700 floor in prior data was from older sources. Current policy requires 750.
+Scores 700–749 may qualify with enhanced documentation at higher rates.
 
-DOCUMENTS:
-- Aadhaar Card + PAN
-- Salary certificate / Form 16
-- Last 3 months salary slips
-- Bank statements (last 6 months)
-- SBI account statement preferred
+XPRESS CREDIT REQUIREMENT:
+Salary account with SBI is a hard prerequisite for standard Xpress Credit processing.
+Applicants without SBI salary account must apply through an alternative route with additional documentation.
 
-SBI XPRESS ELITE:
-- For net monthly income > ₹1 lakh
-- Higher loan amounts available
-- Rate starting 11.05%
+═══════════════════════════════════════════════════════
+INTEREST RATES (2026)
+═══════════════════════════════════════════════════════
 
-ADVANTAGES:
-- Lowest income threshold (₹15,000)
-- Government sector employees get best rates
-- Widest branch network for assistance
-- Lowest age requirement broadly accessible
+Starting rate: 10.00% per annum
+Range: 10.00% to 15.1% p.a.
+Government employees: Starting 10.45% (special rate)
+Defence/Para-military: Special rate 10.45% (Shaurya variant)
+Private sector employees: 12% to 14%
+Self-employed: 13% to 15%
+SBI uses 2-year MCLR (currently 8.75%) as pricing floor — slower-moving than private banks
+Processing fee: Up to 1.50% (min ₹1,000, max ₹15,000); NIL for existing SBI customers
+
+═══════════════════════════════════════════════════════
+LOAN FEATURES
+═══════════════════════════════════════════════════════
+
+Loan amount: Up to ₹35 lakh (Xpress Credit standard); up to ₹20 lakh was older limit
+Tenure: 6 to 84 months (updated; 72 months was prior data; 84 months available for select products)
+Processing fee: Up to 1.50% (min ₹1,000, max ₹15,000)
+No processing fee for existing SBI customers (major advantage)
+No prepayment penalty after 6 months (better than HDFC's 12-month lock-in)
+Interest calculated on daily reducing balance (regulatory compliance)
+
+XPRESS ELITE:
+For net monthly income above ₹1 lakh
+Higher loan amounts available above standard ₹35 lakh cap
+Rate starting 11.05% (but updated data shows 10.45% for government, 10.00% base)
+
+═══════════════════════════════════════════════════════
+SBI PRODUCT VARIANTS
+═══════════════════════════════════════════════════════
+
+Xpress Credit: Standard personal loan for salaried with SBI salary account
+Xpress Elite: High-income earners (>₹1 lakh/month)
+Pension Loan: For SBI pensioners with TPG (Third Party Guarantee)
+Defence/Shaurya: Specialized for defence and para-military (rate from 10.45%)
+
+HOME LOAN CONTEXT (relevant for cross-product advisory):
+SBI is the largest mortgage provider in India
+Starting rate: 7.25% (lowest among all major lenders as of March 2026)
+Max tenure: 30 years
+Female borrowers: 0.05% rate concession when listed as primary applicant
+LTV: Up to 90% financing
+
+═══════════════════════════════════════════════════════
+DOCUMENTS REQUIRED
+═══════════════════════════════════════════════════════
+
+Mandatory: PAN Card, Aadhaar Card
+Identity: Passport, Voter ID (any one)
+Income: Salary certificate or Form 16; last 3 months salary slips
+Banking: Last 6 months bank statements (SBI account preferred)
+Employment: Appointment letter or employer verification letter
+Pensioners: Pension Payment Order (PPO), life certificate
+
+═══════════════════════════════════════════════════════
+ADVANTAGES OVER PRIVATE BANKS
+═══════════════════════════════════════════════════════
+
+Lowest income threshold: ₹5,000 for government/defence — no private bank matches this
+Widest reach: Largest branch network in India — accessible in tier 3/4 cities
+Zero processing fee for existing customers: Saves ₹3,000–₹15,000 vs private banks
+Pension loan availability: Covers post-retirement borrowing (unique to SBI)
+Government employee preference: Best rates and easiest processing for central/state government
+PMAY integration: SBI provides credit-linked subsidy scheme (CLSS) under PMAY for eligible applicants
+
+═══════════════════════════════════════════════════════
+DISADVANTAGES AND WARNINGS
+═══════════════════════════════════════════════════════
+
+Speed disadvantage: Public bank processing typically 5–7 days vs 24–48 hours for Axis/ICICI
+Salary account mandatory: Xpress Credit not available without SBI salary account
+CIBIL threshold raised: 750 now (not 700 as per older data)
+Limited digital journey: Less advanced online/app process compared to ICICI/Axis
+Private sector applicants pay higher rates: 12%–14% vs 10%–11.05% for government
+
+═══════════════════════════════════════════════════════
+REJECTION TRIGGERS
+═══════════════════════════════════════════════════════
+
+No SBI salary account: Cannot use Xpress Credit product (most common rejection cause)
+CIBIL below 750: High rejection probability for standard products
+Income below ₹15,000 (non-government): Rejection for standard products
+Self-employed with less than 12 months: Rejection
+
+═══════════════════════════════════════════════════════
+RECOMMENDATION LOGIC
+═══════════════════════════════════════════════════════
+
+For low-income government employees: SBI Xpress Credit is the ONLY major bank serving ₹5,000 income
+For defence/para-military: Dedicated Shaurya product with lowest rates (10.45%)
+For no-fee processing: Zero processing fee for existing SBI customers is unmatched
+For pension borrowers: Only SBI among major banks has a dedicated pension loan product
+For home loans: SBI offers lowest home loan rate (7.25%) with 30-year tenure
+Female applicants (home loan): List wife as primary applicant to get 0.05% rate concession
+For early repayment: No penalty after 6 months (better than HDFC's 12-month lock-in)

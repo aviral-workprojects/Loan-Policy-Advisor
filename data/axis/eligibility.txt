@@ -1,39 +1,104 @@
-Axis Bank Personal Loan - Eligibility and Features
+Axis Bank Personal Loan — Eligibility, Features, and Decision Logic (2026)
 
-Axis Bank offers personal loans ranging from ₹50,000 to ₹40 lakh.
+Sources: Axis Bank Direct, NoBroker, Paisabazaar (Feb–Mar 2026)
+Data confidence: High | Last updated: March 2026
 
-ELIGIBILITY CRITERIA:
-- Age: 21 to 60 years
-- Minimum monthly income: ₹15,000
-- CIBIL score: 720 or above
-- Employment: Salaried employees, self-employed individuals, professionals
-- Work experience: Minimum 1 year (12 months)
-- Nationality: Indian resident
+═══════════════════════════════════════════════════════
+ELIGIBILITY CRITERIA
+═══════════════════════════════════════════════════════
 
-INTEREST RATES:
-- Starting from 10.49% per annum
-- Rate depends on credit profile, income, and employer category
+Age: 21 to 60 years at loan maturity
+Minimum monthly income: ₹15,000 (existing Axis Bank customers); ₹25,000 (new customers)
+CIBIL score: 750 or above for standard approval; 700–749 considered at higher rates
+Employment: Salaried (public/private/government), self-employed, professionals (doctors, CAs, lawyers)
+Work experience: Minimum 12 months (salaried); 36 months business continuity (self-employed)
+Salary account: Not mandatory; existing Axis customers get preferential ₹15,000 income threshold
 
-LOAN FEATURES:
-- Loan amount: ₹50,000 to ₹40 lakh
-- Tenure: 12 to 60 months
-- Processing fee: Up to 2% + GST
-- No collateral or security required (unsecured loan)
-- Quick disbursal within 48 hours for eligible applicants
+INCOME THRESHOLD LOGIC:
+New customers (no prior Axis relationship): ₹25,000/month minimum
+Existing Axis Bank account holders: ₹15,000/month minimum
+Tiered threshold is a key differentiator — Axis customers face a 40% lower income barrier
 
-DOCUMENTS REQUIRED:
-- KYC documents (Aadhaar, PAN)
-- Salary slips (last 3 months)
-- Bank statements (last 6 months)
-- Form 16 / ITR for self-employed
-- Employment proof
+═══════════════════════════════════════════════════════
+INTEREST RATES (2026)
+═══════════════════════════════════════════════════════
 
-SPECIAL FEATURES:
-- Pre-approved offers for existing Axis customers
-- Balance transfer facility available
-- Top-up loans available after 6 months of repayment
-- Flexible EMI options
+Starting rate: 9.98% per annum (updated; prior 10.49% was outdated)
+Range: 9.98% to 22% p.a.
+Pricing: Repo Rate (5.25%) + spread 2.6%–2.9% for salaried
+CIBIL 750+: 9.98%–12% (prime tier)
+CIBIL 700–749: 13%–17% (standard tier)
+CIBIL below 700: Likely rejection or rate exceeds 17%
 
-DTI GUIDELINES:
-- Recommended debt-to-income ratio below 40%
-- Total EMI obligations should not exceed 50% of net monthly income
+═══════════════════════════════════════════════════════
+LOAN FEATURES
+═══════════════════════════════════════════════════════
+
+Loan amount: ₹50,000 to ₹40 lakh
+Tenure: 12 to 84 months
+Processing fee: Up to 2% + GST
+Collateral: None required (unsecured)
+Disbursal: Within 48 hours for eligible applicants
+Login fee: ₹5,000 + GST — NON-REFUNDABLE even if rejected (critical advisory point)
+
+PREPAYMENT:
+NIL charges for up to 25% of outstanding principal per year after 12 EMIs
+Best-in-class prepayment terms — superior to HDFC and ICICI 12-month lock-ins
+Recommended for borrowers expecting annual bonuses
+
+Late payment penalty: 8% p.a. above applicable rate (capped at 24%)
+
+═══════════════════════════════════════════════════════
+SPECIAL PRODUCTS
+═══════════════════════════════════════════════════════
+
+Pre-approved offers: Instant disbursal for existing customers with clean history
+Balance transfer: Transfer high-rate loans from other banks to Axis
+Top-up loans: Available after 6 months of clean repayment
+Axis QuickPay: Pay higher principal early to alter amortization curve
+Axis Super Saver: Interest on (Loan minus Savings Balance) — reduces effective rate
+
+Niche home loan products:
+Axis Asha Home Loan: ₹1 lakh to ₹28 lakh; min income ₹8,000/month; up to 90% LTV
+Axis Shubh Aarambh: Up to ₹30 lakh; EMI waiver incentives for clean repayment
+Axis Fast Forward: Minimum ₹30 lakh for mid-to-high income borrowers
+
+═══════════════════════════════════════════════════════
+DOCUMENTS REQUIRED
+═══════════════════════════════════════════════════════
+
+Mandatory: PAN Card, Aadhaar Card
+KYC: Passport, Driving License, Voter ID (any one)
+Income: Last 3 months salary slips
+Banking: Last 3–6 months bank statements
+Tax: Form 16 (salaried); ITR last 2 years (self-employed)
+
+═══════════════════════════════════════════════════════
+DTI GUIDELINES
+═══════════════════════════════════════════════════════
+
+Recommended DTI: Below 40%
+Hard ceiling: 50% of net monthly income
+EMI example: ₹5 lakh at 11% for 36 months = ₹16,607/month EMI
+
+═══════════════════════════════════════════════════════
+REJECTION TRIGGERS
+═══════════════════════════════════════════════════════
+
+CIBIL below 700: Near-certain rejection
+Income below threshold (₹15k existing / ₹25k new): Redirect to Axis Asha
+Employment below 12 months: High rejection probability
+Self-employed business proof below 36 months: Automatic rejection
+DTI above 50%: Rejected
+Multiple credit inquiries in last 6 months: Signals credit hunger, reduces approval
+
+═══════════════════════════════════════════════════════
+RECOMMENDATION LOGIC (ADVISORY SYSTEM)
+═══════════════════════════════════════════════════════
+
+For existing Axis customers: ₹15,000 threshold — lowest of all major banks
+For prepayment focus: Axis 25% annual free prepayment is best-in-class
+For CIBIL 700–749: Axis more flexible than HDFC; expect rate above 13%
+For self-employed: Need 3+ years ITR and CA-certified business continuity
+For joint applications: Income clubbing with spouse increases maximum eligibility
+Employer category: Category A employers (top MNCs, PSUs) attract better spreads

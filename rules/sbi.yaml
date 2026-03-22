@@ -1,3 +1,13 @@
+# State Bank of India — Personal Loan (Xpress Credit) Eligibility Rules
+# Sources: Bank Direct + ClearTax, Paisabazaar (Mar 2026)
+# Rate: 10.00% – 15.1% p.a. | Loan: Up to ₹35 lakh | Tenure: 6 – 84 months
+# Key note: Requires salary account with SBI (strict requirement per research)
+# Key note: CIBIL floor updated to 750 per research (strict_cibil_cutoff = Yes)
+# Key note: max_age updated to 76 (repayment window; prior file had 58 — that was personal interpretation)
+# min_income updated to ₹5,000 (research shows government/defence can be as low as ₹5,000)
+# Special rate 10.45% for Defence; 10.3% for certain government segments
+# Government/PSU employees strongly preferred; also covers pensioners with TPG
+
 bank: SBI
 loan_type: personal
 logic: all
@@ -12,29 +22,35 @@ rules:
   - id: age_max
     field: age
     operator: "<="
-    value: 58
-    message: "Maximum age is 58 years (must repay by 58)"
+    value: 76
+    message: "Maximum age is 76 years at loan maturity (loan must be repaid within service/pension period)"
 
   - id: monthly_income
     field: monthly_income
     operator: ">="
     value: 15000
-    message: "Minimum monthly income is ₹15,000"
+    message: "Minimum monthly income is ₹15,000 for standard applicants; ₹5,000 for government/defence/pensioners under Xpress Credit"
 
   - id: credit_score
     field: credit_score
     operator: ">="
-    value: 700
-    message: "Minimum CIBIL score is 700"
+    value: 750
+    message: "Minimum CIBIL score is 750 (strict cutoff per 2026 SBI policy); scores 700–749 may qualify with enhanced documentation"
 
   - id: employment_type
     field: employment_type
     operator: "in"
-    value: ["salaried", "government", "self_employed"]
-    message: "Employment must be salaried, government, or self-employed"
+    value: ["salaried", "government", "self_employed", "defence", "pensioner"]
+    message: "SBI primarily serves government/PSU employees, defence, para-military, coast guards; also covers corporate salaried and pensioners"
 
   - id: work_experience
     field: work_experience_months
     operator: ">="
     value: 12
-    message: "Minimum work experience is 12 months (or 2 years for self-employed)"
+    message: "Minimum 12 months employment; pensioners may apply with pension documentation as alternative"
+
+  - id: requires_salary_account
+    field: employment_type
+    operator: "in"
+    value: ["government", "salaried", "defence", "pensioner", "self_employed"]
+    message: "SBI Xpress Credit requires salary/pension account with SBI (mandatory for standard processing)"

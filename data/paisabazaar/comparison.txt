@@ -1,40 +1,165 @@
-Paisabazaar Personal Loan Guide - Market Comparison
+Paisabazaar — Indian Personal Loan Market Comparison Guide (2026)
 
-Personal loans in India: Key insights from comparison platform data (2024).
+Sources: Paisabazaar aggregator data, RBI repo rate data, bank-direct verification (Mar 2026)
+This file serves as the comparison and cross-bank intelligence layer for the advisory system.
 
-MARKET OVERVIEW:
-- Average personal loan interest rate in India: 11-18% per annum
-- Average loan amount: ₹5-8 lakh
-- Common tenure: 24-48 months
-- Processing time: 1-7 business days
+═══════════════════════════════════════════════════════
+MARKET OVERVIEW (2026)
+═══════════════════════════════════════════════════════
 
-BANK COMPARISON TABLE (Personal Loans):
-Bank         | Min Income | Min CIBIL | Rate Start | Max Amount
--------------|------------|-----------|------------|----------
-Axis Bank    | ₹15,000   | 720       | 10.49%     | ₹40 lakh
-ICICI Bank   | ₹25,000   | 700       | 10.65%     | ₹50 lakh  
-HDFC Bank    | ₹20,000   | 750       | 10.50%     | ₹40 lakh
-SBI          | ₹15,000   | 700       | 11.05%     | ₹20 lakh
-Bajaj Finserv| ₹25,000   | 685       | 11.00%     | ₹40 lakh
-Kotak Mahindra| ₹20,000  | 700       | 10.99%     | ₹40 lakh
+RBI Repo Rate: 5.25% (as of 2026; note: prior 2024 data showed 6.50% — this is the current updated figure)
+Banks price personal loans at: Repo + 4%–17% spread
+MCLR (2-year SBI): 8.75% — used by public banks as pricing floor
+Average personal loan rate India: 11%–18% per annum
+Average loan amount: ₹5–8 lakh
+Common tenure: 24–48 months
+Processing time: 1–7 business days (1–2 days for private banks; 5–7 for public banks)
 
-KEY MARKET HEURISTICS:
-1. DTI Rule: Keep total EMI obligations below 40-50% of net monthly income
-2. Credit Score Tiers:
-   - 750+: Best rates, pre-approved offers
-   - 700-749: Approved with standard rates
-   - 650-699: Possible with conditions or higher rates
-   - Below 650: Rejection likely from major banks
-3. Income-to-Loan Ratio: Banks typically lend 10-20x monthly income
-4. Employer Category Matters: MNCs and PSUs get better terms
+═══════════════════════════════════════════════════════
+COMPREHENSIVE BANK COMPARISON TABLE — PERSONAL LOANS (2026)
+═══════════════════════════════════════════════════════
 
-ELIGIBILITY TIPS:
-- Adding a co-applicant can boost eligibility
-- Clearing existing EMIs before applying improves DTI
-- Salary account with target bank helps approval
-- Avoid multiple applications (reduces credit score)
+Bank            | Min Income  | Min CIBIL | Rate Start | Max Amount | Max Tenure | DTI Cap
+----------------|-------------|-----------|------------|------------|------------|--------
+Axis Bank       | ₹15,000*   | 750       | 9.98%      | ₹40 lakh   | 84 months  | 50%
+HDFC Bank       | ₹25,000     | 700 (600**) | 9.98%   | ₹75 lakh   | 72 months  | 50%
+ICICI Bank      | ₹30,000     | 700       | 9.99%      | ₹50 lakh   | 72 months  | 55%
+SBI (Xpress)    | ₹5,000***  | 750       | 10.00%     | ₹35 lakh   | 84 months  | N/A
+Bajaj Finserv   | ₹25,000     | 685       | 11.00%     | ₹40 lakh   | 84 months  | 50%
+Kotak Mahindra  | ₹20,000     | 700       | 10.99%     | ₹40 lakh   | 60 months  | 50%
 
-EMI CALCULATION GUIDE:
-- For ₹5 lakh @ 12% for 36 months: EMI = ₹16,607
-- For ₹10 lakh @ 11% for 48 months: EMI = ₹25,850
-- Golden rule: EMI should not exceed 40% of net salary
+*Axis ₹15,000 threshold for existing customers only; ₹25,000 for new customers
+**HDFC minimum 600 per NoBroker aggregator source; standard threshold is 700
+***SBI ₹5,000 applicable for government/defence/pensioners under Xpress Credit only
+
+═══════════════════════════════════════════════════════
+CREDIT SCORE TIERS AND BANK BEHAVIOR
+═══════════════════════════════════════════════════════
+
+CIBIL 750 and above:
+Best rates (9.98%–12%), pre-approved offers, instant disbursal at ICICI/Axis
+All four major banks will approve; negotiate on spread
+
+CIBIL 700–749:
+Approved at standard rates (12%–16%)
+ICICI most accommodating (700 strict floor, approval difficulty = Low)
+Axis: Will consider but at higher rate band
+HDFC: Approved but rate band 13%–18%
+SBI: Increasingly strict; 750 is preferred cutoff
+
+CIBIL 650–699:
+Rejection likely from Axis and SBI (750 strict cutoff)
+HDFC: Possible with enhanced documentation (600 is cited floor)
+ICICI: Rejection below 700
+Alternative: Bajaj Finserv (685 floor), NBFCs (no minimum but rates 18%–36%)
+
+CIBIL below 650:
+Systematic rejection across all Tier-1 banks
+Redirect to: Fintechs (KreditBee, MoneyTap: rates 24%–36%)
+Best path: Step-UP credit card (SBM Bank co-branded) to build credit history
+Estimated credit-building timeline: 6–12 months of clean credit card usage
+
+NEW TO CREDIT (NTC) / NO CIBIL:
+HDFC and ICICI use alternate data (bank statements, employment verification)
+SBI and Axis rely heavily on CIBIL history — difficult path for NTC
+Recommendation: HDFC digital journey for NTC borrowers
+Prerequisite: SBM Bank Step-UP card to build CIBIL before applying to public banks
+
+═══════════════════════════════════════════════════════
+EMI-TO-INCOME RATIO BENCHMARKS
+═══════════════════════════════════════════════════════
+
+40% DTI: Comfortable approval zone — all major banks approve
+40%–50% DTI: Borderline — ICICI most flexible, HDFC and Axis strictly enforce 50%
+50%–65% DTI: ICICI may approve; others will reject
+Above 65%: Systemic rejection — debt burden too high regardless of income
+
+DTI Formula: (Existing EMIs + Proposed EMI) / Net Monthly Income
+
+EMI Reference Table:
+₹5 lakh at 12% for 36 months: EMI = ₹16,607
+₹10 lakh at 11% for 48 months: EMI = ₹25,850
+₹10 lakh at 10% for 60 months: EMI = ₹21,247
+₹20 lakh at 10% for 72 months: EMI = ₹32,258
+Golden rule: Proposed EMI should not exceed 40% of net monthly salary
+
+Income-to-loan multiplier: Banks typically lend 10–20x monthly income
+₹20,000/month income: Eligible for ₹2 lakh–₹4 lakh loan
+₹50,000/month income: Eligible for ₹5 lakh–₹10 lakh loan
+₹1 lakh/month income: Eligible for ₹10 lakh–₹20 lakh loan
+
+═══════════════════════════════════════════════════════
+PROCESSING FEE COMPARISON
+═══════════════════════════════════════════════════════
+
+SBI: 0%–1.50% (NIL for existing customers — best deal)
+Axis: Up to 2% (+ non-refundable ₹5,000 login fee)
+HDFC: 0.99%–2.50% (capped at ₹6,500 + GST for standard; varies by product)
+ICICI: Up to 2.50%
+
+Zero-fee strategy: SBI existing customers save ₹3,000–₹15,000 in processing fees
+Axis login fee warning: ₹5,000 + GST is non-refundable — do not apply unless confident of approval
+
+═══════════════════════════════════════════════════════
+PREPAYMENT COMPARISON
+═══════════════════════════════════════════════════════
+
+Axis: NIL for up to 25% of principal/year after 12 EMIs — BEST in market
+SBI: NIL after 6 months
+ICICI: NIL after 12 EMIs; 3%–5% before 12 EMIs
+HDFC: 2%–4% even after 12 EMIs — WORST in market for prepayment
+
+Advisory: For borrowers with bonus potential or investment windfalls, recommend Axis first, then SBI.
+Avoid HDFC if early repayment is a priority.
+
+═══════════════════════════════════════════════════════
+DISBURSAL SPEED COMPARISON
+═══════════════════════════════════════════════════════
+
+ICICI (pre-approved): 3 seconds — industry benchmark
+Axis: 48 hours standard; instant for pre-approved
+HDFC: 24 hours; 10 seconds for select pre-approved customers
+SBI: 5–7 working days — slowest among major banks
+
+Speed USP: Private banks (Axis, HDFC, ICICI) own the speed advantage; SBI owns the rate advantage for government employees
+
+═══════════════════════════════════════════════════════
+EMPLOYER CATEGORY IMPACT
+═══════════════════════════════════════════════════════
+
+Category A employers (top MNCs, NIFTY 500, PSUs): Best rates, fastest approvals at all banks
+Category B employers (established private companies): Standard rates
+Category C employers (SMEs, lesser-known companies): Higher rates; possible additional documentation
+Gig economy/freelancers: Bank statement analysis as proxy for income — ICICI most accommodating
+
+Employment sector priority (best to worst for loan approval):
+1. Government/Defence/PSU (best — SBI specialty)
+2. Category A MNCs (best at private banks)
+3. Reputed private companies
+4. SME employees
+5. Self-employed professionals (doctors, CAs — verified income)
+6. Self-employed non-professionals (business owners)
+7. Gig economy/freelancers (most difficult — bank statement analysis required)
+
+═══════════════════════════════════════════════════════
+MARKET HEURISTICS FROM PAISABAZAAR DATA
+═══════════════════════════════════════════════════════
+
+Multiple applications harm CIBIL: Each hard inquiry drops score by 5–10 points
+Best strategy: Apply to one bank at a time; use pre-eligibility checkers (soft inquiry) first
+Salary account advantage: Target bank salary account triggers pre-approved status worth 1%–2% rate reduction
+Co-applicant benefit: Adding a co-applicant with good CIBIL can boost approval probability by 40%
+Debt clearance: Paying off one existing EMI before applying improves DTI and can shift CIBIL tier
+Avoid job changes: Do not change employers within 6 months before loan application
+
+═══════════════════════════════════════════════════════
+FINTECH vs TRADITIONAL BANK POSITIONING
+═══════════════════════════════════════════════════════
+
+Traditional banks (Axis, HDFC, ICICI, SBI): Rates 9.98%–16%; strict criteria; lower risk
+NBFCs (Bajaj Finserv, Fullerton): Rates 11%–24%; medium criteria; moderate risk
+Fintechs (KreditBee, MoneyTap, Navi): Rates 24%–36%; lenient criteria; high cost
+Last resort: Fintechs are appropriate ONLY when traditional banks have rejected and credit-building is not immediately possible
+
+Advisory guardrail: Never recommend fintech loans without disclosing the effective cost.
+A ₹5 lakh loan at 36% for 24 months costs ₹2 lakh more in interest than the same loan at 12%.
