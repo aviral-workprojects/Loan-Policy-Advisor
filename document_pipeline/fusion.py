@@ -77,26 +77,90 @@ class DataFusion:
             return self._manual_query_parse(query)
 
     def _manual_query_parse(self, query: str) -> dict[str, Any]:
-        profile = {}
-        # Income
-        m = re.search(r"(?:earn|salary|income|pay)\s*(?:of|is|=)?\s*₹?\s*(\d[\d,]*)\s*(?:k|thousand|lakh|lpa)?", query, re.I)
+        """
+        Fallback parser for when query_understanding is unavailable.
+        Handles informal queries, k-suffix income, "age 23" patterns,
+        freelancer detection, and the "no job" ≠ salaried edge case.
+        """
+        profile: dict[str, Any] = {}
+        ql = query.lower()
+
+        # ── Income ──────────────────────────────────────────────────────────
+        # Priority 1: contextual earn/salary/income + number + optional suffix
+        m = re.search(
+            r"(?:earn|salary|income|pay)\s*(?:of|is|=|:)?\s*"
+            r"₹?\s*(\d[\d,]*)\s*(k|thousand|lakh|lpa)?",
+            query, re.I,
+        )
         if m:
-            from scraper.normalizer import parse_monthly_income
-            inc = parse_monthly_income(m.group(0))
-            if inc:
-                profile["monthly_income"] = inc
-        # CIBIL
-        m = re.search(r"(?:cibil|credit|score)\s*(?:of|is|=)?\s*(\d{3})", query, re.I)
+            raw = m.group(1).replace(",", "")
+            try:
+                val = float(raw)
+                suffix = (m.group(2) or "").lower()
+                if suffix in ("k", "thousand"):
+                    val *= 1_000
+                elif suffix == "lakh":
+                    val *= 1_00_000
+                elif suffix == "lpa":
+                    val = val * 1_00_000 / 12
+                if 3_000 < val < 10_00_00_000:
+                    profile["monthly_income"] = round(val, 2)
+            except ValueError:
+                pass
+
+        # Priority 2: bare "30k" / "₹40,000" when no contextual keyword present
+        if "monthly_income" not in profile:
+            m2 = re.search(r"₹?\s*(\d[\d,]+)\s*(k\b|thousand\b)?", query, re.I)
+            if m2:
+                raw = m2.group(1).replace(",", "")
+                try:
+                    val = float(raw)
+                    if m2.group(2):
+                        val *= 1_000
+                    if 5_000 <= val <= 5_00_000:   # plausible monthly income range
+                        profile["monthly_income"] = round(val, 2)
+                except ValueError:
+                    pass
+
+        # ── CIBIL ────────────────────────────────────────────────────────────
+        m = re.search(r"(?:cibil|credit|score)\s*(?:of|is|=|:)?\s*(\d{3})", query, re.I)
+        if not m:
+            m = re.search(r"\b([4-9]\d{2})\b", query)
         if m:
             score = int(m.group(1))
             if 300 <= score <= 900:
                 profile["credit_score"] = score
-        # Age
-        m = re.search(r"(\d{2})\s*years?\s*old|\bage\s*(\d{2})\b", query, re.I)
+
+        # ── Age ──────────────────────────────────────────────────────────────
+        m = re.search(
+            r"(\d{2})\s*years?\s*(?:old|of\s*age)?\b|"
+            r"(?:age|aged?)\s*(?:of\s*|is\s*|:)?\s*(\d{2})\b|"
+            r"(?:\bam|is)\s+(\d{2})\b",
+            query, re.I,
+        )
         if m:
-            age = int(m.group(1) or m.group(2))
-            if 18 <= age <= 80:
-                profile["age"] = age
+            try:
+                age = int(next(g for g in m.groups() if g is not None))
+                if 18 <= age <= 80:
+                    profile["age"] = age
+            except (ValueError, StopIteration):
+                pass
+
+        # ── Employment type — check negative/unemployed FIRST ────────────────
+        # "\bjob\b" removed from salaried check to avoid "no job" → salaried
+        if re.search(r"\bno\s+job\b|\bunemployed\b|\bjobless\b", ql):
+            profile["employment_type"] = "unemployed"
+        elif re.search(
+            r"\bfreelance[rd]?\b|\bfreelancing\b|\bself.?emp\b|\bconsultant\b|"
+            r"\bown\s+business\b|\bproprietor\b|\bgig\b",
+            ql,
+        ):
+            profile["employment_type"] = "self_employed"
+        elif re.search(r"\bgovernment\b|\bpsu\b|\bdefence\b|\bdefense\b", ql):
+            profile["employment_type"] = "government"
+        elif re.search(r"\bsalaried\b|\bworking\b|\bemployed\b|\bservice\b", ql):
+            profile["employment_type"] = "salaried"
+
         return profile
 
     # ── Validation ────────────────────────────────────────────────────────────

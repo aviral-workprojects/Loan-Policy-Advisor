@@ -117,8 +117,12 @@ NVIDIA_EMBED_MODEL   = os.getenv("NVIDIA_EMBED_MODEL",
 NVIDIA_EMBED_DIM     = 1024
 
 # --- MoE Routing ---
-# Word count threshold below which we skip RAG (pure rule engine path)
-MOE_SIMPLE_QUERY_WORDS = int(os.getenv("MOE_SIMPLE_QUERY_WORDS", "6"))
+# Word count threshold below which we skip RAG (pure rule engine path).
+# Lowered from 6 → 3: queries like "ROI Axis personal loan" (4 words) or
+# "minimum income requirement ICICI" (4 words) must reach the retrieval layer
+# or they silently fail to return rate / policy information.
+# Only truly trivial 1–3 word inputs (e.g. "help", "hello") skip RAG.
+MOE_SIMPLE_QUERY_WORDS = int(os.getenv("MOE_SIMPLE_QUERY_WORDS", "3"))
 
 # --- PDF Pipeline (NVIDIA Page Elements) ---
 # Processed JSON output from pdf_pipeline.py is stored here

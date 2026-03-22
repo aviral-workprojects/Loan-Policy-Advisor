@@ -72,6 +72,42 @@ class LLMService:
     def __init__(self):
         self._client = None
 
+    # ── Hinglish / informal pre-processing ───────────────────────────────────
+
+    # Mirrors query_understanding._HINGLISH_TOKENS so both rule-based and
+    # LLM paths see the same normalised input.
+    _HINGLISH_PREPROCESS: dict[str, str] = {
+        r"\bmil\s+jayega\b":       "will i get",
+        r"\bmil\s+sakta\s+hai\b":  "can i get",
+        r"\bmil\s+sakta\b":        "can i get",
+        r"\bkya\s+loan\b":         "can i get loan",
+        r"\bloan\s+milega\b":      "will i get loan",
+        r"\bkya\b":                "",
+        r"\bpe\b":                 "for",
+        r"\bke\s+liye\b":          "for",
+        r"\bjaldi\b":              "fast",
+        r"\bkaun\s*sa\b":          "which",
+        r"\bkitna\b":              "how much",
+        r"\bsaal\b":               "years",
+        r"\bnahi\b":               "no",
+        r"\bhoga\b":               "will be",
+        r"\bbro\b":                "",
+        r"\byaar\b":               "",
+        r"\bdude\b":               "",
+    }
+
+    @classmethod
+    def _preprocess_query(cls, query: str) -> str:
+        """
+        Light preprocessing for Hinglish / informal queries before they reach
+        the LLM parser.  Preserves all numeric signals (income, CIBIL, age)
+        while removing noise tokens that confuse the model.
+        """
+        q = query.strip()
+        for pattern, replacement in cls._HINGLISH_PREPROCESS.items():
+            q = re.sub(pattern, replacement, q, flags=re.I)
+        return re.sub(r"\s{2,}", " ", q).strip()
+
     def _get_client(self):
         if self._client: return self._client
         if LLM_PROVIDER == "groq":
@@ -121,15 +157,25 @@ Schema:
 INCOME RULES (critical):
 - Return monthly_income as plain integer. No ₹ symbol. No commas.
 - "₹35,000" → 35000  |  "35k" → 35000  |  "5 LPA" → 41667  |  "₹40,000/month" → 40000
+- "30k salary" → 30000  |  "20k" alone in a loan context → 20000
 
 EXPERIENCE RULES:
 - "2 years" → 24  |  "18 months" → 18  |  "salaried for 3 years" → employment_type="salaried", work_experience_months=36
 
 DTI RULES:
-- Always return as decimal 0–1. "40%" → 0.40. Never return 40."""
+- Always return as decimal 0–1. "40%" → 0.40. Never return 40.
+
+INFORMAL / HINGLISH RULES:
+- "bro", "yaar", "dude" → ignore filler words, still extract numbers
+- "freelancing income" | "income from freelancing" | "freelancer" → employment_type="self_employed"
+- "no job" | "unemployed" | "jobless" → employment_type=null (never guess salaried)
+- "need loan urgently" | "loan mil jayega" → intent="eligibility"
+- "which bank is best/fastest/safest" → intent="comparison"
+- If no specific bank is mentioned, return banks=[]"""
 
     def parse_query(self, query: str) -> ParsedQuery:
-        raw = self._call(PARSE_MODEL, self.PARSE_SYSTEM, query, max_tokens=400)
+        preprocessed = self._preprocess_query(query)
+        raw = self._call(PARSE_MODEL, self.PARSE_SYSTEM, preprocessed, max_tokens=400)
         cleaned = re.sub(r"```(?:json)?", "", raw).strip().strip("`")
         try:
             data = json.loads(cleaned)
