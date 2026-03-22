@@ -80,7 +80,12 @@ class AdvisorResponse:
 # Decision logic
 # ---------------------------------------------------------------------------
 
-BANK_RATES = {"axis": "10.49%", "hdfc": "10.50%", "icici": "10.65%", "sbi": "11.05%"}
+BANK_RATES = {
+    "axis":  "9.98% – 22%",
+    "hdfc":  "9.98% – 24%",
+    "icici": "9.99% – 16.5%",
+    "sbi":   "10.00% – 15.1%",
+}
 
 
 def _determine_decision(
@@ -88,6 +93,17 @@ def _determine_decision(
     reasoning:    ReasoningContext,
     profile:      dict,
 ) -> str:
+    """
+    Map rule engine output to a user-facing decision label.
+
+    States:
+      "Eligible"          — all evaluated banks passed
+      "Partially Eligible" — at least one bank passed
+      "Not Eligible"      — all banks failed (no missing critical fields)
+      "Partial Profile"   — profile has SOME data but missing critical fields
+                            (income/age/CIBIL); can show partial rule evaluation
+      "Insufficient Data" — truly empty profile, no evaluation possible
+    """
     if not profile:
         return "Insufficient Data"
     if not bank_results:
@@ -96,13 +112,29 @@ def _determine_decision(
     n_eligible = len(reasoning.eligible_banks)
     n_total    = len(bank_results)
 
-    if reasoning.missing_data_banks and n_eligible == 0:
-        return "Insufficient Data"
-    elif n_eligible == n_total:
+    # Count banks blocked by missing critical fields vs actually failed
+    n_missing_critical = sum(
+        1 for br in bank_results
+        if any(e.status == "missing" and e.field in {"age", "monthly_income", "credit_score"}
+               for e in br.evaluations)
+    )
+    n_hard_fail = sum(
+        1 for br in bank_results
+        if not br.eligible and any(e.status == "fail" for e in br.evaluations)
+    )
+
+    if n_eligible == n_total:
         return "Eligible"
     elif n_eligible > 0:
         return "Partially Eligible"
+    elif n_hard_fail > 0 and n_missing_critical == 0:
+        # All banks failed due to actual rule failures (not missing data)
+        return "Not Eligible"
+    elif n_missing_critical > 0 and n_hard_fail == 0:
+        # Profile exists but missing critical fields — partial evaluation only
+        return "Partial Profile"
     else:
+        # Mix of missing fields and failures
         return "Not Eligible"
 
 
@@ -208,6 +240,16 @@ class LoanAdvisorPipeline:
         confidence, conf_breakdown = compute_confidence(
             bank_results, reasoning, len(chunks), retrieval_scores
         )
+
+        # Confidence floor: when the rule engine ran on real profile data,
+        # the decision is deterministic — confidence should reflect that.
+        if bank_results and profile:
+            n_hard_data = sum(1 for k in ("monthly_income", "credit_score", "age") if k in profile)
+            if n_hard_data >= 2:
+                confidence = max(confidence, 0.65)
+            if n_hard_data == 3:
+                confidence = max(confidence, 0.80)
+
         reasoning.confidence_breakdown = conf_breakdown
 
         # ── 8. Validation ─────────────────────────────────────────────────────
@@ -237,15 +279,33 @@ class LoanAdvisorPipeline:
             fused_context += "\n\n" + web_context
 
         if not bank_results and not chunks:
-            explanation = {
-                "summary": "Insufficient profile data. Please provide age, monthly income, and CIBIL score.",
-                "detailed_explanation": "Cannot evaluate eligibility without core profile data.",
-                "recommendations": [
-                    "Provide your age, monthly income (e.g. ₹35,000/month), and CIBIL score.",
-                    "Mention which bank you are interested in (Axis, HDFC, ICICI, SBI).",
-                ],
-                "sources_cited": [],
-            }
+            # True no-data case: no profile AND no retrieved context
+            # Still attempt to answer factual queries using fallback web search
+            if signals.intent in ("interest_rate", "fees", "document", "comparison"):
+                # Factual question — answer from knowledge base / web, don't refuse
+                explanation = self.llm.explain(
+                    query=user_query,
+                    rule_results=[],
+                    retrieved_context=web_context or "No specific context retrieved.",
+                    parsed_query={"intent": signals.intent, "entities": signals.entities},
+                    pre_decision=decision,
+                    decision_context=reasoning.to_dict(),
+                )
+            else:
+                explanation = {
+                    "summary": "Please provide your profile details to check eligibility.",
+                    "detailed_explanation": (
+                        "To evaluate your loan eligibility I need: monthly income (e.g. ₹35,000/month), "
+                        "CIBIL score (e.g. 720), and age. You can also upload a salary slip or bank statement."
+                    ),
+                    "recommendations": [
+                        "Share your monthly income (e.g. 'I earn ₹40,000 per month').",
+                        "Share your CIBIL score (e.g. 'my CIBIL is 730').",
+                        "Share your age (e.g. 'I am 28 years old').",
+                        "Or upload a salary slip / bank statement using the 'Analyze Document' panel.",
+                    ],
+                    "sources_cited": [],
+                }
         else:
             explanation = self.llm.explain(
                 query=user_query,

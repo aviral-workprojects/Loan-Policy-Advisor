@@ -1,0 +1,682 @@
+{
+  "decision": "Not Eligible",
+  "summary": "State: Not Eligible. Eligible banks: none. Rejected banks: Axis, HDFC, ICICI, SBI.",
+  "detailed_explanation": "The applicant's profile shows a monthly income of ₹18,000, a credit score of 650, and an age of 22 years. The decision context indicates that all considered banks (Axis, HDFC, ICICI, SBI) have rejected the applicant. The top failure reasons include low credit score, low monthly income, age out of range, and insufficient work experience. For instance, Axis requires a minimum CIBIL score of 750, while the applicant has a score of 650. HDFC requires a minimum monthly income of ₹25,000, which is higher than the applicant's income. ICICI requires a minimum age of 23 years and a minimum monthly income of ₹30,000. SBI requires a minimum CIBIL score of 750 and primarily serves government/PSU employees, which does not match the applicant's employment type. The best bank recommendation is not available due to the applicant's ineligibility across all considered banks.",
+  "recommendations": [
+    "Raise CIBIL score from 650 to 750 to qualify for Axis and SBI.",
+    "Increase monthly income from ₹18,000 to ₹25,000 to qualify for HDFC.",
+    "Increase monthly income from ₹18,000 to ₹30,000 to qualify for ICICI.",
+    "Wait until the age is 23 years or more to qualify for ICICI."
+  ],
+  "extracted_data": {
+    "monthly_income": 18000.0,
+    "annual_income": 216000.0,
+    "credit_score": 650,
+    "age": 22,
+    "employment_type": "professional",
+    "work_experience_months": 20,
+    "dti_ratio": null,
+    "name": "requested loan size",
+    "employer_name": null,
+    "pan_number": "AAZPS****K",
+    "loan_amount_requested": 200000.0,
+    "bank_balance": null,
+    "account_number": null,
+    "document_type": "cibil_report",
+    "extraction_confidence": 1.0,
+    "raw_fields_found": [
+      "monthly_income",
+      "credit_score",
+      "age",
+      "employment_type",
+      "work_experience_months",
+      "name",
+      "pan_number",
+      "loan_amount_requested"
+    ]
+  },
+  "eligible_banks": [],
+  "rejected_banks": [
+    "axis",
+    "hdfc",
+    "icici",
+    "sbi"
+  ],
+  "banks_compared": [
+    {
+      "name": "axis",
+      "eligible": false,
+      "rate": "10.49%",
+      "score": 60,
+      "rule_score": 86,
+      "summary": "❌ Not eligible — 1 rule(s) failed: 650.0 >= 750 ✗ — requires 750, got 650.0"
+    },
+    {
+      "name": "hdfc",
+      "eligible": false,
+      "rate": "10.50%",
+      "score": 41,
+      "rule_score": 71,
+      "summary": "❌ Not eligible — 2 rule(s) failed: 18000.0 >= 25000 ✗ — requires 25000, got 18000.0; 650.0 >= 700 ✗ — requires 700, got 650.0"
+    },
+    {
+      "name": "sbi",
+      "eligible": false,
+      "rate": "11.05%",
+      "score": 12,
+      "rule_score": 57,
+      "summary": "❌ Not eligible — 3 rule(s) failed: 650.0 >= 750 ✗ — requires 750, got 650.0; professional in ['salaried', 'government', 'self_employed', 'defence', 'pensioner'] ✗ — requires ['salaried', 'government', 'self_employed', 'defence', 'pensioner'], got professional"
+    },
+    {
+      "name": "icici",
+      "eligible": false,
+      "rate": "10.65%",
+      "score": 5,
+      "rule_score": 43,
+      "summary": "❌ Not eligible — 4 rule(s) failed: 22.0 >= 23 ✗ — requires 23, got 22.0; 18000.0 >= 30000 ✗ — requires 30000, got 18000.0"
+    }
+  ],
+  "rule_results": [
+    {
+      "bank": "axis",
+      "eligible": false,
+      "rule_score": 0.857,
+      "summary": "❌ Not eligible — 1 rule(s) failed: 650.0 >= 750 ✗ — requires 750, got 650.0",
+      "passed": [
+        "Minimum age is 21 years",
+        "Maximum age is 60 years at time of loan maturity",
+        "Minimum monthly income is ₹15,000 (existing Axis Bank customers) or ₹25,000 (new customers)",
+        "Employment must be salaried (public/private/govt), self-employed, or professional (doctors, CAs, etc.)",
+        "Minimum 12 months employment history for salaried; 36 months business continuity for self-employed",
+        "Total EMI obligations (including proposed loan) must not exceed 50% of net monthly income"
+      ],
+      "failed": [
+        "Minimum CIBIL score is 750 for standard approval; scores 700–749 may be considered at higher rates"
+      ],
+      "missing": [],
+      "evaluations": [
+        {
+          "rule_id": "age_min",
+          "field": "age",
+          "passed": true,
+          "actual_value": 22.0,
+          "expected": 21,
+          "operator": ">=",
+          "message": "Minimum age is 21 years",
+          "status": "pass",
+          "reason": "22.0 >= 21 ✓"
+        },
+        {
+          "rule_id": "age_max",
+          "field": "age",
+          "passed": true,
+          "actual_value": 22.0,
+          "expected": 60,
+          "operator": "<=",
+          "message": "Maximum age is 60 years at time of loan maturity",
+          "status": "pass",
+          "reason": "22.0 <= 60 ✓"
+        },
+        {
+          "rule_id": "monthly_income",
+          "field": "monthly_income",
+          "passed": true,
+          "actual_value": 18000.0,
+          "expected": 15000,
+          "operator": ">=",
+          "message": "Minimum monthly income is ₹15,000 (existing Axis Bank customers) or ₹25,000 (new customers)",
+          "status": "pass",
+          "reason": "18000.0 >= 15000 ✓"
+        },
+        {
+          "rule_id": "credit_score",
+          "field": "credit_score",
+          "passed": false,
+          "actual_value": 650.0,
+          "expected": 750,
+          "operator": ">=",
+          "message": "Minimum CIBIL score is 750 for standard approval; scores 700–749 may be considered at higher rates",
+          "status": "fail",
+          "reason": "650.0 >= 750 ✗ — requires 750, got 650.0"
+        },
+        {
+          "rule_id": "employment_type",
+          "field": "employment_type",
+          "passed": true,
+          "actual_value": "professional",
+          "expected": [
+            "salaried",
+            "self_employed",
+            "professional",
+            "government"
+          ],
+          "operator": "in",
+          "message": "Employment must be salaried (public/private/govt), self-employed, or professional (doctors, CAs, etc.)",
+          "status": "pass",
+          "reason": "professional in ['salaried', 'self_employed', 'professional', 'government'] ✓"
+        },
+        {
+          "rule_id": "work_experience",
+          "field": "work_experience_months",
+          "passed": true,
+          "actual_value": 20.0,
+          "expected": 12,
+          "operator": ">=",
+          "message": "Minimum 12 months employment history for salaried; 36 months business continuity for self-employed",
+          "status": "pass",
+          "reason": "20.0 >= 12 ✓"
+        },
+        {
+          "rule_id": "dti_ratio",
+          "field": "dti_ratio",
+          "passed": true,
+          "actual_value": 0.35,
+          "expected": 0.5,
+          "operator": "<=",
+          "message": "Total EMI obligations (including proposed loan) must not exceed 50% of net monthly income",
+          "status": "pass",
+          "reason": "0.35 <= 0.5 ✓"
+        }
+      ]
+    },
+    {
+      "bank": "hdfc",
+      "eligible": false,
+      "rule_score": 0.714,
+      "summary": "❌ Not eligible — 2 rule(s) failed: 18000.0 >= 25000 ✗ — requires 25000, got 18000.0; 650.0 >= 700 ✗ — requires 700, got 650.0",
+      "passed": [
+        "Minimum age is 21 years",
+        "Maximum age is 60 years at loan maturity",
+        "Employment must be salaried, self-employed, professional, or government sector",
+        "Minimum 12 months employment; 24 months preferred for best rates",
+        "Debt-to-income ratio must not exceed 50%; HDFC strictly evaluates all existing EMI obligations"
+      ],
+      "failed": [
+        "Minimum monthly income is ₹25,000 (₹75,000+ qualifies for Golden Edge premium rates)",
+        "Minimum CIBIL score is 700; scores below 750 attract higher interest rates; 750+ for prime pricing"
+      ],
+      "missing": [],
+      "evaluations": [
+        {
+          "rule_id": "age_min",
+          "field": "age",
+          "passed": true,
+          "actual_value": 22.0,
+          "expected": 21,
+          "operator": ">=",
+          "message": "Minimum age is 21 years",
+          "status": "pass",
+          "reason": "22.0 >= 21 ✓"
+        },
+        {
+          "rule_id": "age_max",
+          "field": "age",
+          "passed": true,
+          "actual_value": 22.0,
+          "expected": 60,
+          "operator": "<=",
+          "message": "Maximum age is 60 years at loan maturity",
+          "status": "pass",
+          "reason": "22.0 <= 60 ✓"
+        },
+        {
+          "rule_id": "monthly_income",
+          "field": "monthly_income",
+          "passed": false,
+          "actual_value": 18000.0,
+          "expected": 25000,
+          "operator": ">=",
+          "message": "Minimum monthly income is ₹25,000 (₹75,000+ qualifies for Golden Edge premium rates)",
+          "status": "fail",
+          "reason": "18000.0 >= 25000 ✗ — requires 25000, got 18000.0"
+        },
+        {
+          "rule_id": "credit_score",
+          "field": "credit_score",
+          "passed": false,
+          "actual_value": 650.0,
+          "expected": 700,
+          "operator": ">=",
+          "message": "Minimum CIBIL score is 700; scores below 750 attract higher interest rates; 750+ for prime pricing",
+          "status": "fail",
+          "reason": "650.0 >= 700 ✗ — requires 700, got 650.0"
+        },
+        {
+          "rule_id": "employment_type",
+          "field": "employment_type",
+          "passed": true,
+          "actual_value": "professional",
+          "expected": [
+            "salaried",
+            "self_employed",
+            "professional",
+            "government"
+          ],
+          "operator": "in",
+          "message": "Employment must be salaried, self-employed, professional, or government sector",
+          "status": "pass",
+          "reason": "professional in ['salaried', 'self_employed', 'professional', 'government'] ✓"
+        },
+        {
+          "rule_id": "work_experience",
+          "field": "work_experience_months",
+          "passed": true,
+          "actual_value": 20.0,
+          "expected": 12,
+          "operator": ">=",
+          "message": "Minimum 12 months employment; 24 months preferred for best rates",
+          "status": "pass",
+          "reason": "20.0 >= 12 ✓"
+        },
+        {
+          "rule_id": "dti_ratio",
+          "field": "dti_ratio",
+          "passed": true,
+          "actual_value": 0.35,
+          "expected": 0.5,
+          "operator": "<=",
+          "message": "Debt-to-income ratio must not exceed 50%; HDFC strictly evaluates all existing EMI obligations",
+          "status": "pass",
+          "reason": "0.35 <= 0.5 ✓"
+        }
+      ]
+    },
+    {
+      "bank": "icici",
+      "eligible": false,
+      "rule_score": 0.429,
+      "summary": "❌ Not eligible — 4 rule(s) failed: 22.0 >= 23 ✗ — requires 23, got 22.0; 18000.0 >= 30000 ✗ — requires 30000, got 18000.0",
+      "passed": [
+        "Maximum age is 65 years at loan maturity (updated from 58 per 2026 policy)",
+        "Employment must be salaried (MNCs, PSUs, government) or self-employed/professional",
+        "Total EMI-to-net-monthly-income ratio should not exceed 55%; applications favorable at 50–65% per ICICI underwriting"
+      ],
+      "failed": [
+        "Minimum age is 23 years (25 years for self-employed doctors)",
+        "Minimum monthly income is ₹30,000; higher income qualifies for preferential rates",
+        "Minimum CIBIL score is 700; 750+ for best rates and instant pre-approval",
+        "Minimum 24 months total work experience; minimum 1 year with current employer; 36 months for self-employed non-professionals"
+      ],
+      "missing": [],
+      "evaluations": [
+        {
+          "rule_id": "age_min",
+          "field": "age",
+          "passed": false,
+          "actual_value": 22.0,
+          "expected": 23,
+          "operator": ">=",
+          "message": "Minimum age is 23 years (25 years for self-employed doctors)",
+          "status": "fail",
+          "reason": "22.0 >= 23 ✗ — requires 23, got 22.0"
+        },
+        {
+          "rule_id": "age_max",
+          "field": "age",
+          "passed": true,
+          "actual_value": 22.0,
+          "expected": 65,
+          "operator": "<=",
+          "message": "Maximum age is 65 years at loan maturity (updated from 58 per 2026 policy)",
+          "status": "pass",
+          "reason": "22.0 <= 65 ✓"
+        },
+        {
+          "rule_id": "monthly_income",
+          "field": "monthly_income",
+          "passed": false,
+          "actual_value": 18000.0,
+          "expected": 30000,
+          "operator": ">=",
+          "message": "Minimum monthly income is ₹30,000; higher income qualifies for preferential rates",
+          "status": "fail",
+          "reason": "18000.0 >= 30000 ✗ — requires 30000, got 18000.0"
+        },
+        {
+          "rule_id": "credit_score",
+          "field": "credit_score",
+          "passed": false,
+          "actual_value": 650.0,
+          "expected": 700,
+          "operator": ">=",
+          "message": "Minimum CIBIL score is 700; 750+ for best rates and instant pre-approval",
+          "status": "fail",
+          "reason": "650.0 >= 700 ✗ — requires 700, got 650.0"
+        },
+        {
+          "rule_id": "employment_type",
+          "field": "employment_type",
+          "passed": true,
+          "actual_value": "professional",
+          "expected": [
+            "salaried",
+            "self_employed",
+            "professional"
+          ],
+          "operator": "in",
+          "message": "Employment must be salaried (MNCs, PSUs, government) or self-employed/professional",
+          "status": "pass",
+          "reason": "professional in ['salaried', 'self_employed', 'professional'] ✓"
+        },
+        {
+          "rule_id": "work_experience",
+          "field": "work_experience_months",
+          "passed": false,
+          "actual_value": 20.0,
+          "expected": 24,
+          "operator": ">=",
+          "message": "Minimum 24 months total work experience; minimum 1 year with current employer; 36 months for self-employed non-professionals",
+          "status": "fail",
+          "reason": "20.0 >= 24 ✗ — requires 24, got 20.0"
+        },
+        {
+          "rule_id": "dti_ratio",
+          "field": "dti_ratio",
+          "passed": true,
+          "actual_value": 0.35,
+          "expected": 0.55,
+          "operator": "<=",
+          "message": "Total EMI-to-net-monthly-income ratio should not exceed 55%; applications favorable at 50–65% per ICICI underwriting",
+          "status": "pass",
+          "reason": "0.35 <= 0.55 ✓"
+        }
+      ]
+    },
+    {
+      "bank": "sbi",
+      "eligible": false,
+      "rule_score": 0.571,
+      "summary": "❌ Not eligible — 3 rule(s) failed: 650.0 >= 750 ✗ — requires 750, got 650.0; professional in ['salaried', 'government', 'self_employed', 'defence', 'pensioner'] ✗ — requires ['salaried', 'government', 'self_employed', 'defence', 'pensioner'], got professional",
+      "passed": [
+        "Minimum age is 21 years",
+        "Maximum age is 76 years at loan maturity (loan must be repaid within service/pension period)",
+        "Minimum monthly income is ₹15,000 for standard applicants; ₹5,000 for government/defence/pensioners under Xpress Credit",
+        "Minimum 12 months employment; pensioners may apply with pension documentation as alternative"
+      ],
+      "failed": [
+        "Minimum CIBIL score is 750 (strict cutoff per 2026 SBI policy); scores 700–749 may qualify with enhanced documentation",
+        "SBI primarily serves government/PSU employees, defence, para-military, coast guards; also covers corporate salaried and pensioners",
+        "SBI Xpress Credit requires salary/pension account with SBI (mandatory for standard processing)"
+      ],
+      "missing": [],
+      "evaluations": [
+        {
+          "rule_id": "age_min",
+          "field": "age",
+          "passed": true,
+          "actual_value": 22.0,
+          "expected": 21,
+          "operator": ">=",
+          "message": "Minimum age is 21 years",
+          "status": "pass",
+          "reason": "22.0 >= 21 ✓"
+        },
+        {
+          "rule_id": "age_max",
+          "field": "age",
+          "passed": true,
+          "actual_value": 22.0,
+          "expected": 76,
+          "operator": "<=",
+          "message": "Maximum age is 76 years at loan maturity (loan must be repaid within service/pension period)",
+          "status": "pass",
+          "reason": "22.0 <= 76 ✓"
+        },
+        {
+          "rule_id": "monthly_income",
+          "field": "monthly_income",
+          "passed": true,
+          "actual_value": 18000.0,
+          "expected": 15000,
+          "operator": ">=",
+          "message": "Minimum monthly income is ₹15,000 for standard applicants; ₹5,000 for government/defence/pensioners under Xpress Credit",
+          "status": "pass",
+          "reason": "18000.0 >= 15000 ✓"
+        },
+        {
+          "rule_id": "credit_score",
+          "field": "credit_score",
+          "passed": false,
+          "actual_value": 650.0,
+          "expected": 750,
+          "operator": ">=",
+          "message": "Minimum CIBIL score is 750 (strict cutoff per 2026 SBI policy); scores 700–749 may qualify with enhanced documentation",
+          "status": "fail",
+          "reason": "650.0 >= 750 ✗ — requires 750, got 650.0"
+        },
+        {
+          "rule_id": "employment_type",
+          "field": "employment_type",
+          "passed": false,
+          "actual_value": "professional",
+          "expected": [
+            "salaried",
+            "government",
+            "self_employed",
+            "defence",
+            "pensioner"
+          ],
+          "operator": "in",
+          "message": "SBI primarily serves government/PSU employees, defence, para-military, coast guards; also covers corporate salaried and pensioners",
+          "status": "fail",
+          "reason": "professional in ['salaried', 'government', 'self_employed', 'defence', 'pensioner'] ✗ — requires ['salaried', 'government', 'self_employed', 'defence', 'pensioner'], got professional"
+        },
+        {
+          "rule_id": "work_experience",
+          "field": "work_experience_months",
+          "passed": true,
+          "actual_value": 20.0,
+          "expected": 12,
+          "operator": ">=",
+          "message": "Minimum 12 months employment; pensioners may apply with pension documentation as alternative",
+          "status": "pass",
+          "reason": "20.0 >= 12 ✓"
+        },
+        {
+          "rule_id": "requires_salary_account",
+          "field": "employment_type",
+          "passed": false,
+          "actual_value": "professional",
+          "expected": [
+            "government",
+            "salaried",
+            "defence",
+            "pensioner",
+            "self_employed"
+          ],
+          "operator": "in",
+          "message": "SBI Xpress Credit requires salary/pension account with SBI (mandatory for standard processing)",
+          "status": "fail",
+          "reason": "professional in ['government', 'salaried', 'defence', 'pensioner', 'self_employed'] ✗ — requires ['government', 'salaried', 'defence', 'pensioner', 'self_employed'], got professional"
+        }
+      ]
+    }
+  ],
+  "confidence": 0.45,
+  "sources_cited": [
+    "PERSONAL LOAN APPLICATION DOCUMENT"
+  ],
+  "reasoning_context": {
+    "eligible_banks": [],
+    "rejected_banks": [
+      "axis",
+      "hdfc",
+      "icici",
+      "sbi"
+    ],
+    "missing_data_banks": [],
+    "best_bank": null,
+    "closest_bank": "axis",
+    "failure_summary": {
+      "low_cibil": 4,
+      "low_income": 2,
+      "age_out_of_range": 1,
+      "insufficient_experience": 1,
+      "ineligible_employment_type": 2
+    },
+    "top_failures": [
+      {
+        "bank": "axis",
+        "field": "credit_score",
+        "rule": "Minimum CIBIL score is 750 for standard approval; scores 700–749 may be considered at higher rates",
+        "actual": 650.0,
+        "required": 750,
+        "operator": ">=",
+        "reason": "650.0 >= 750 ✗ — requires 750, got 650.0",
+        "category": "low_cibil"
+      },
+      {
+        "bank": "hdfc",
+        "field": "monthly_income",
+        "rule": "Minimum monthly income is ₹25,000 (₹75,000+ qualifies for Golden Edge premium rates)",
+        "actual": 18000.0,
+        "required": 25000,
+        "operator": ">=",
+        "reason": "18000.0 >= 25000 ✗ — requires 25000, got 18000.0",
+        "category": "low_income"
+      },
+      {
+        "bank": "icici",
+        "field": "work_experience_months",
+        "rule": "Minimum 24 months total work experience; minimum 1 year with current employer; 36 months for self-employed non-professionals",
+        "actual": 20.0,
+        "required": 24,
+        "operator": ">=",
+        "reason": "20.0 >= 24 ✗ — requires 24, got 20.0",
+        "category": "insufficient_experience"
+      },
+      {
+        "bank": "sbi",
+        "field": "employment_type",
+        "rule": "SBI primarily serves government/PSU employees, defence, para-military, coast guards; also covers corporate salaried and pensioners",
+        "actual": "professional",
+        "required": [
+          "salaried",
+          "government",
+          "self_employed",
+          "defence",
+          "pensioner"
+        ],
+        "operator": "in",
+        "reason": "professional in ['salaried', 'government', 'self_employed', 'defence', 'pensioner'] ✗ — requires ['salaried', 'government', 'self_employed', 'defence', 'pensioner'], got professional",
+        "category": "ineligible_employment_type"
+      },
+      {
+        "bank": "icici",
+        "field": "age",
+        "rule": "Minimum age is 23 years (25 years for self-employed doctors)",
+        "actual": 22.0,
+        "required": 23,
+        "operator": ">=",
+        "reason": "22.0 >= 23 ✗ — requires 23, got 22.0",
+        "category": "age_out_of_range"
+      }
+    ],
+    "data_completeness": 0.83,
+    "profile_fields_provided": [
+      "age",
+      "monthly_income",
+      "credit_score",
+      "employment_type",
+      "work_experience_months"
+    ],
+    "profile_fields_missing": [
+      "dti_ratio"
+    ],
+    "critical_failures": [
+      {
+        "bank": "axis",
+        "field": "credit_score",
+        "rule": "Minimum CIBIL score is 750 for standard approval; scores 700–749 may be considered at higher rates",
+        "actual": 650.0,
+        "required": 750,
+        "operator": ">=",
+        "reason": "650.0 >= 750 ✗ — requires 750, got 650.0",
+        "category": "low_cibil"
+      },
+      {
+        "bank": "hdfc",
+        "field": "credit_score",
+        "rule": "Minimum CIBIL score is 700; scores below 750 attract higher interest rates; 750+ for prime pricing",
+        "actual": 650.0,
+        "required": 700,
+        "operator": ">=",
+        "reason": "650.0 >= 700 ✗ — requires 700, got 650.0",
+        "category": "low_cibil"
+      },
+      {
+        "bank": "icici",
+        "field": "credit_score",
+        "rule": "Minimum CIBIL score is 700; 750+ for best rates and instant pre-approval",
+        "actual": 650.0,
+        "required": 700,
+        "operator": ">=",
+        "reason": "650.0 >= 700 ✗ — requires 700, got 650.0",
+        "category": "low_cibil"
+      },
+      {
+        "bank": "sbi",
+        "field": "credit_score",
+        "rule": "Minimum CIBIL score is 750 (strict cutoff per 2026 SBI policy); scores 700–749 may qualify with enhanced documentation",
+        "actual": 650.0,
+        "required": 750,
+        "operator": ">=",
+        "reason": "650.0 >= 750 ✗ — requires 750, got 650.0",
+        "category": "low_cibil"
+      },
+      {
+        "bank": "hdfc",
+        "field": "monthly_income",
+        "rule": "Minimum monthly income is ₹25,000 (₹75,000+ qualifies for Golden Edge premium rates)",
+        "actual": 18000.0,
+        "required": 25000,
+        "operator": ">=",
+        "reason": "18000.0 >= 25000 ✗ — requires 25000, got 18000.0",
+        "category": "low_income"
+      },
+      {
+        "bank": "icici",
+        "field": "monthly_income",
+        "rule": "Minimum monthly income is ₹30,000; higher income qualifies for preferential rates",
+        "actual": 18000.0,
+        "required": 30000,
+        "operator": ">=",
+        "reason": "18000.0 >= 30000 ✗ — requires 30000, got 18000.0",
+        "category": "low_income"
+      },
+      {
+        "bank": "icici",
+        "field": "age",
+        "rule": "Minimum age is 23 years (25 years for self-employed doctors)",
+        "actual": 22.0,
+        "required": 23,
+        "operator": ">=",
+        "reason": "22.0 >= 23 ✗ — requires 23, got 22.0",
+        "category": "age_out_of_range"
+      }
+    ],
+    "best_bank_reason": null,
+    "confidence_breakdown": {
+      "rule_score_component": 0.321,
+      "data_completeness_component": 0.25,
+      "retrieval_component": 0.0,
+      "avg_rule_score": 0.643,
+      "data_completeness": 0.833,
+      "retrieval_confidence": 0.0,
+      "critical_failure_cap": true,
+      "final": 0.45
+    }
+  },
+  "validation_issues": [
+    {
+      "severity": "warning",
+      "bank": "",
+      "message": "Low confidence (45%) — response may be unreliable. Consider providing more profile data."
+    }
+  ],
+  "best_bank": null,
+  "best_bank_reason": null,
+  "processing_method": "pdfplumber",
+  "latency_ms": 3792.8,
+  "file_hash": "fe748d799f42c745"
+}

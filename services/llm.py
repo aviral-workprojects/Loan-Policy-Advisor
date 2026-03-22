@@ -152,20 +152,28 @@ a decision already made by a deterministic rule engine. You cannot change it.
 3. OMISSION: Cover EVERY bank. Never skip one.
 4. HEDGING: Never write "I think", "it appears", "may", "could". State facts.
 5. SPECIFICITY: Every recommendation MUST include a numeric target.
+6. MISSING ≠ FAILED: If a field status is "missing" or "? [not provided]",
+   NEVER describe it as a failure or say the requirement was not met.
+   Instead say "Field not provided — cannot evaluate this rule."
+   DO NOT fabricate age/CIBIL/income failure reasons for missing fields.
 
 ═══ STRICT OUTPUT FORMAT ════════════════════════════════════════════════════
 
 1. DECISION SUMMARY
    State: "{pre_decision}"
    List eligible banks and rejected banks by name.
+   If decision is "Partial Profile": explain which fields are missing and which rules could be evaluated.
 
 2. BANK-WISE OUTCOMES
    For each bank:
-   [BANK NAME]: ELIGIBLE / NOT ELIGIBLE
+   [BANK NAME]: ELIGIBLE / NOT ELIGIBLE / PARTIAL PROFILE
    ✓ [passed rule with actual value]
-   ✗ [failed rule: actual X, required Y — exact reason from data]
+   ✗ [failed rule: actual X, required Y — exact reason from rule data]
+   ? [missing field name] — not provided, cannot evaluate
 
-3. TOP FAILURE REASONS
+   CRITICAL: ? lines are MISSING DATA, not failures. Never convert them to ✗.
+
+3. TOP FAILURE REASONS (only real failures — status="fail")
    Use decision_context.top_failures only. Format:
    • [field]: applicant has [actual], bank requires [required] [operator]
 
@@ -177,6 +185,7 @@ a decision already made by a deterministic rule engine. You cannot change it.
    3-4 items. Each MUST have a numeric target. Example format:
    • Raise CIBIL from [actual] to [required] to qualify at [bank]
    • Increase monthly income from ₹[actual] to ₹[required] for [bank]
+   • Provide [missing field] to complete eligibility check
 
 ═════════════════════════════════════════════════════════════════════════════"""
 
@@ -193,13 +202,17 @@ a decision already made by a deterministic rule engine. You cannot change it.
         # Build concise per-bank failure strings for the prompt
         bank_summaries = []
         for r in rule_results:
-            lines = [f"  {r['bank']}: {'ELIGIBLE' if r['eligible'] else 'NOT ELIGIBLE'} (score={r.get('rule_score',0):.0%})"]
+            eligible_label = "ELIGIBLE" if r["eligible"] else "NOT ELIGIBLE"
+            has_missing = bool(r.get("missing"))
+            if has_missing and not r.get("failed"):
+                eligible_label = "PARTIAL PROFILE (missing fields — cannot fully evaluate)"
+            lines = [f"  {r['bank']}: {eligible_label} (score={r.get('rule_score',0):.0%})"]
             for f in r.get("failed", []):
-                lines.append(f"    ✗ {f}")
+                lines.append(f"    ✗ FAILED: {f}")
             for m in r.get("missing", []):
-                lines.append(f"    ? {m} [not provided]")
-            for p in r.get("passed", [])[:2]:
-                lines.append(f"    ✓ {p}")
+                lines.append(f"    ? MISSING (NOT a failure — just not provided): {m}")
+            for p in r.get("passed", [])[:3]:
+                lines.append(f"    ✓ PASSED: {p}")
             bank_summaries.append("\n".join(lines))
 
         user_prompt = f"""
@@ -207,16 +220,18 @@ FINAL DECISION (must appear verbatim in summary): {pre_decision}
 
 USER QUERY: {query}
 
-APPLICANT PROFILE:
+APPLICANT PROFILE (only these fields were provided — others are MISSING, not failed):
 {json.dumps(parsed_query.get("entities",{}), indent=2)}
 
 DECISION CONTEXT (use these exact values — do not infer):
 {json.dumps(decision_context or {}, indent=2)}
 
-CRITICAL FAILURES (hard gates: CIBIL / income / age):
+HARD FAILURES (rules that actually FAILED due to provided data not meeting threshold):
 {json.dumps((decision_context or {}).get("critical_failures", []), indent=2)}
 
 PER-BANK RULE RESULTS:
+IMPORTANT: "? MISSING" lines mean data was not provided — DO NOT treat them as failures.
+Only "✗ FAILED" lines are actual eligibility failures.
 {chr(10).join(bank_summaries)}
 
 KNOWLEDGE CONTEXT (use for rate/policy info only):
@@ -224,10 +239,10 @@ KNOWLEDGE CONTEXT (use for rate/policy info only):
 
 Respond with JSON only — no markdown, no code blocks:
 {{
-  "summary": "State '{pre_decision}'. Name eligible banks and rejected banks.",
-  "detailed_explanation": "Sections 1–4 from the strict format above, merged into clear prose",
+  "summary": "State '{pre_decision}'. Name eligible banks and rejected banks. If Partial Profile, name which fields are missing.",
+  "detailed_explanation": "Sections 1–4 from the strict format above, merged into clear prose. NEVER describe missing fields as failures.",
   "recommendations": [
-    "3-4 items, each with a specific numeric target referencing actual vs required values"
+    "3-4 items, each with a specific numeric target referencing actual vs required values, or asking user to provide specific missing field"
   ],
   "sources_cited": ["source file names from knowledge context"]
 }}

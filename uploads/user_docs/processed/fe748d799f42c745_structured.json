@@ -1,0 +1,32 @@
+{
+  "filename": "PERSONAL LOAN APPLICATION DOCUMENT.pdf",
+  "file_hash": "fe748d799f42c745",
+  "extracted": {
+    "monthly_income": 18000.0,
+    "annual_income": 216000.0,
+    "credit_score": 650,
+    "age": 22,
+    "employment_type": "professional",
+    "work_experience_months": 20,
+    "dti_ratio": null,
+    "name": "requested loan size",
+    "employer_name": null,
+    "pan_number": "AAZPS****K",
+    "loan_amount_requested": 200000.0,
+    "bank_balance": null,
+    "account_number": null,
+    "document_type": "cibil_report",
+    "extraction_confidence": 1.0,
+    "raw_fields_found": [
+      "monthly_income",
+      "credit_score",
+      "age",
+      "employment_type",
+      "work_experience_months",
+      "name",
+      "pan_number",
+      "loan_amount_requested"
+    ]
+  },
+  "method": "pdfplumber"
+}

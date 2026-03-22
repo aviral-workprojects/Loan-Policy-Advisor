@@ -257,3 +257,14 @@ class RuleEngine:
             bank=bank, loan_type=loan_type, eligible=eligible,
             evaluations=evaluations, rule_score=rule_score, summary=summary,
         )
+
+    def evaluate_all(self, profile: dict[str, Any]) -> list[BankResult]:
+        """
+        Evaluate a profile against ALL available bank rule files.
+
+        Returns results sorted by rule_score descending so the best-matching
+        bank appears first.  Used by the CLI demo and the pipeline's bank
+        ranking / recommendation logic.
+        """
+        results = [self.evaluate(bank, profile) for bank in self.available_banks()]
+        return sorted(results, key=lambda r: r.rule_score, reverse=True)

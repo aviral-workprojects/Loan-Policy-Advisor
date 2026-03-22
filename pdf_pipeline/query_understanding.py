@@ -22,6 +22,48 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Hinglish / informal query normalisation
+# ---------------------------------------------------------------------------
+
+# Lightweight token-level replacements applied BEFORE any regex extraction.
+# Goal: make informal/Hinglish queries parseable — not produce perfect English.
+_HINGLISH_TOKENS: dict[str, str] = {
+    r"\bmil\s+jayega\b":       "will i get",
+    r"\bmil\s+sakta\s+hai\b":  "can i get",
+    r"\bmil\s+sakta\b":        "can i get",
+    r"\bkya\s+loan\b":         "can i get loan",
+    r"\bloan\s+milega\b":      "will i get loan",
+    r"\bkya\b":                "",
+    r"\bpe\b":                 "for",
+    r"\bke\s+liye\b":          "for",
+    r"\bjaldi\b":              "fast urgent",
+    r"\bkaun\s*sa\b":          "which",
+    r"\bkitna\b":              "how much",
+    r"\bsaal\b":               "years",
+    r"\brupaye\b":             "rupees",
+    r"\bnahi\b":               "no",
+    r"\bhoga\b":               "will be",
+    r"\bbro\b":                "",
+    r"\byaar\b":               "",
+    r"\bdude\b":               "",
+}
+
+
+def _normalize_query(query: str) -> str:
+    """
+    Normalise informal / Hinglish queries before rule-based signal extraction.
+
+    Only light normalisation — produces enough English for the regex patterns
+    to fire.  The *original* query is preserved for the LLM explain step;
+    this output is only used for intent classification and entity extraction.
+    """
+    q = query.strip()
+    for pattern, replacement in _HINGLISH_TOKENS.items():
+        q = re.sub(pattern, replacement, q, flags=re.I)
+    return re.sub(r"\s{2,}", " ", q).strip()
+
+
+# ---------------------------------------------------------------------------
 # Output types
 # ---------------------------------------------------------------------------
 
@@ -68,19 +110,29 @@ LOAN_TYPES = {
 _INTENT_PATTERNS = {
     "eligibility": re.compile(
         r"\beligib|\bqualif|\bcan i\b|\bam i\b|\bwill i\b|"
-        r"\bdo i qualify|\bapply\b|\bget a loan\b|\bapproved\b", re.I
+        r"\bdo i qualify|\bapply\b|\bget a loan\b|\bget approved\b|\bapproved\b|"
+        r"\bneed.*loan\b|\bwant.*loan\b|\bget.*loan\b|"
+        r"\bwhat to do\b|\burgent.*loan\b|\bloan.*urgent\b",
+        re.I,
     ),
     "interest_rate": re.compile(
-        r"\binterest rate|\broi\b|\brate of interest|\b% p\.?a|\bemi\b|\binstalment\b", re.I
+        r"\binterest rate|\broi\b|\brate of interest|\b% p\.?a|\bemi\b|\binstalment\b|"
+        r"\bminimum (?:salary|income|cibil|age|score)\b|"
+        r"\bwhat (?:is|are) (?:the )?(?:minimum|maximum|requirement)",
+        re.I,
     ),
     "comparison": re.compile(
-        r"\bcompare|\bvs\.?\b|\bbetter\b|\bbest\b|\bwhich bank|\bhighest|\blowest\b", re.I
+        r"\bcompare|\bvs\.?\b|\bbetter\b|\bbest\b|\bwhich bank|\bhighest|\blowest\b|"
+        r"\bfastest\b|\bsafest\b|\bcheapest\b|\beasiest\b|\bquickest\b",
+        re.I,
     ),
     "fees": re.compile(
-        r"\bfee|\bcharge|\bpenalty|\bprocessing fee|\bforeclos|\bprepay", re.I
+        r"\bfee|\bcharge|\bpenalty|\bprocessing fee|\bforeclos|\bprepay",
+        re.I,
     ),
     "document": re.compile(
-        r"\bdocument|\bkyc\b|\bpapers?\b|\bsubmit\b|\brequired.*doc|\bdoc.*required", re.I
+        r"\bdocument|\bkyc\b|\bpapers?\b|\bsubmit\b|\brequired.*doc|\bdoc.*required",
+        re.I,
     ),
 }
 
@@ -95,7 +147,12 @@ _INCOME_PATTERNS = [
 ]
 
 _CIBIL_PATTERN  = re.compile(r"\b(cibil|credit\s*score)\s*(?:of|is|:|=)?\s*(\d{3})\b", re.I)
-_AGE_PATTERN    = re.compile(r"\b(\d{2})\s*years?\s*(?:old|of\s*age)?\b", re.I)
+_AGE_PATTERN    = re.compile(
+    r"\b(\d{2})\s*years?\s*(?:old|of\s*age)?\b|"         # "28 years old", "28 years"
+    r"(?:age|aged?)\s*(?:of\s*|is\s*|:)?\s*(\d{2})\b|"  # "age 23", "aged 30"
+    r"(?:\bam|is)\s+(\d{2})\b",                           # "I am 28"
+    re.I,
+)
 _TENURE_PATTERN = re.compile(r"(\d+)\s*years?\s*(?:of\s*)?(?:experience|service|work)", re.I)
 
 
@@ -112,13 +169,16 @@ def understand_query(query: str) -> QuerySignals:
     and a reformulated query optimised for retrieval.
     """
     query = query.strip()
+    # Normalise informal / Hinglish text before running any pattern matching.
+    # The original query is preserved; `normalised` is used for extraction only.
+    normalised = _normalize_query(query)
 
-    banks       = _detect_banks(query)
-    loan_type   = _detect_loan_type(query)
-    intent, conf = _classify_intent(query, banks)
-    entities    = _extract_entities(query)
-    profile     = _normalise_profile(entities)
-    reformulated = _reformulate_query(query, intent, banks, loan_type, profile)
+    banks        = _detect_banks(normalised)
+    loan_type    = _detect_loan_type(normalised)
+    intent, conf = _classify_intent(normalised, banks)
+    entities     = _extract_entities(normalised)
+    profile      = _normalise_profile(entities)
+    reformulated = _reformulate_query(normalised, intent, banks, loan_type, profile)
 
     signals = QuerySignals(
         intent=intent,
@@ -147,9 +207,22 @@ def _classify_intent(query: str, banks: list[str]) -> tuple[str, float]:
         if pattern.search(query):
             scores[intent] = scores.get(intent, 0) + 2
 
-    # Boost eligibility if profile entities are present
-    if any(w in query.lower() for w in ["salary", "cibil", "income", "age", "score"]):
+    ql = query.lower()
+
+    # "Factual question" flag: narrow to true information-seeking patterns.
+    # "need" is intentionally excluded — "I need a loan" is eligibility, not factual.
+    is_factual_question = bool(re.search(
+        r"\bwhat\s+(?:is|are|documents?)\b|\bhow\s+much\b|"
+        r"\bminimum\b|\bmaximum\b|\brequired\b|\bwhat\s+do\s+i\s+need\b",
+        ql,
+    ))
+    has_profile_data = any(w in ql for w in ["salary", "cibil", "income", "age", "score", "earn"])
+    if has_profile_data and not is_factual_question:
         scores["eligibility"] = scores.get("eligibility", 0) + 1
+
+    # Strong eligibility signal: user expresses a personal need / desire for a loan
+    if re.search(r"\bneed.*loan\b|\bwant.*loan\b|\bget.*loan\b", ql):
+        scores["eligibility"] = scores.get("eligibility", 0) + 2
 
     # Boost comparison if multiple banks mentioned
     if len(banks) > 1:
@@ -228,14 +301,14 @@ def _extract_entities(query: str) -> dict[str, Any]:
             except ValueError:
                 pass
 
-    # Age
+    # Age — extended pattern: "28 years old" | "age 23" | "I am 28"
     m = _AGE_PATTERN.search(query)
     if m:
         try:
-            age = int(m.group(1))
+            age = int(next(g for g in m.groups() if g is not None))
             if 18 <= age <= 75:
                 entities["age"] = age
-        except ValueError:
+        except (ValueError, StopIteration):
             pass
 
     # Work experience
@@ -248,14 +321,21 @@ def _extract_entities(query: str) -> dict[str, Any]:
         except ValueError:
             pass
 
-    # Employment type
+    # Employment type — order matters: check negative/unemployed FIRST to avoid
+    # "\bjob\b" matching "no job" and falsely returning "salaried".
     ql = query.lower()
-    if re.search(r"\bself.emp|\bfreelance|\bbusiness\s*owner|\bproprieto", ql):
+    if re.search(r"\bno\s+job\b|\bunemployed\b|\bjobless\b|\bno\s+(?:fixed\s+)?income\b", ql):
+        entities["employment_type"] = "unemployed"
+    elif re.search(r"\bself.?emp|\bfreelance[rd]?\b|\bfreelancing\b|\bgig\s*worker\b|"
+                   r"\bconsultant\b|\bown\s+business\b|\bproprietor\b|\bbusiness\s+owner\b", ql):
         entities["employment_type"] = "self_employed"
-    elif re.search(r"\bgovernment|\bpsu\b|\bpublic\s*sector", ql):
+    elif re.search(r"\bgovernment\b|\bpsu\b|\bpublic\s+sector\b|\bdefence\b|\bdefense\b", ql):
         entities["employment_type"] = "government"
-    elif re.search(r"\bsalaried|\bemployed|\bjob\b", ql):
+    elif re.search(r"\bprofessional\b|\bdoctor\b|\bca\b|\bchartered\b|\blawyer\b|\barchitect\b", ql):
+        entities["employment_type"] = "professional"
+    elif re.search(r"\bsalaried\b|\bemployed\b|\bservice\b|\bworking\b", ql):
         entities["employment_type"] = "salaried"
+    # Note: bare "\bjob\b" intentionally removed — too ambiguous with "no job"
 
     # DTI ratio
     m = re.search(r"\bdti\s*(?:of|is|=)?\s*(\d+)%?", query, re.I)
